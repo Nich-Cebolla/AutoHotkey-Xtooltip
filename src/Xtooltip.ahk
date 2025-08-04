@@ -2,10 +2,6 @@
 ; https://github.com/Nich-Cebolla/AutoHotkey-LibV2/blob/main/structs/LOGFONT.ahk
 #include <Logfont>
 
-; Test if a tool can be activated without text
-; Test if adding a tool also activates it
-; Check how it works if a tooltip has multiple tracking tools
-
 /**
  * # Quick start guide
  *
