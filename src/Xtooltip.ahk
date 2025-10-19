@@ -1,246 +1,6 @@
 ﻿
-; https://github.com/Nich-Cebolla/AutoHotkey-LibV2/blob/main/structs/LOGFONT.ahk
-#include <Logfont>
 
 /**
- * # Quick start guide
- *
- * The following is a brief introduction intended to share enough information for you to make use
- * of this library.
- *
- * ## The tooltip window
- *
- * A tooltip is a window with the following basic components:
- * - Theme (Text color, background color, window styles)
- * - Display text
- * - Parent window
- *
- * A single tooltip can be associated with any number of "tools". For example, say I have
- * three buttons in a gui window. I can prepare one tooltip window that displays different text
- * when the user hovers the mouse cursor over each button. To accomplish this, we add three
- * "tools" to the tooltip.
- *
- * ## Tools and `ToolInfo` objects
- *
- * A "tool" is an application-defined group of configuration options organized into a `TTTOOLINFO`
- * structure. In this library, the `ToolInfo` class has properties mapped to each of the members
- * of the `TTTOOLINFO` structure, so you will be interacting with the Windows API through familiar
- * object properties instead of byte offsets.
- *
- * The `TTTOOLINFO` structure is used heavily by the tooltip-related functions offered by the Windows
- * API. Whenever we need to get information about a tool, or update a value associated with a tool,
- * we supply a `ToolInfo` object which mediates this exchange.
- *
- * Because a tooltip can be associated with multiple tools, we cannot cache one `ToolInfo` object
- * and use it repeatedly with the Windows API functions. We must fill the structure's members
- * with updated values when we call a function that requires it. In order to fill the members, our
- * code must set two poperties: "Hwnd" and "Id". These identify the tool with which the upcoming function
- * call will be interacting.
- *
- * This is the pattern for sending many of the TTM window messages WITHOUT using this library:
- * @example
- *  ; Assume the `xtt` is an `XTooltip` object
- *  ti :== ToolInfo(xtt.Hwnd) ; get a `ToolInfo` object (mapped to a TTTOOLINFO structure)
- *  ti.Hwnd := parentHwnd ; Set the "hwnd" property
- *  ti.Id := uniqueId ; set the "id" property
- *  ; For this example, we want to update the tooltip's text
- *  str := "Hello, world!"
- *  buf := Buffer(StrPut(str, "UTF-16"))
- *  StrPut(str, buf, "UTF-16")
- *  NumPut("ptr", buf.Ptr, ti, 24 + A_PtrSize * 3)
- *  SendMessage(TTM_UPDATETIPTEXTW, ti.Ptr, 0, xtt.Hwnd)
- * @
- *
- * ## ToolInfo.Params objects
- *
- * As you explore the library, you will see that many methods require a `ToolInfo` object. In order to do this, our code must set two
- * properties: "hwnd" and "uId".
- *
- * To simplify and systematize this pattern that will be repeated in our code, the `Xtt` object
- * has a property "Tools" which is a map object that stores references to `ToolInfo.Params` objects.
- * A `ToolInfo.Params` object contains the static data that defines a particular tool. Instead of
- * caching a `ToolInfo` object, which has values that will change as time goes on, this library
- * will have you cache one `ToolInfo.Params` object for every tool added to a tooltip.
- *
- *
- *
- *
- *
- * The "tool" is represented in our AHK code by a `ToolInfo` object. The `ToolInfo` object is a buffer
- * object with its properties mapped to the members of the `TTTOOLINFO` structure.
- * This library handles the details of the API, but if you are interested the relevant information
- * is here: https://learn.microsoft.com/en-us/windows/win32/api/commctrl/ns-commctrl-tttoolinfoa
- *
- * This is your process when writing the code that will create the tooltip:
- *
- * 1. Decide which tooltip mode is appropriate for your project
- *
- * ## Tooltip modes
- *
- * There are three configurations predefined by this library:
- *
- * 1. If you want your code to have full control over the tooltip's display and position, see
- * "Setting up a tracking tooltip.
- * 2. If you want the tooltip to be visible when the user moves the mouse over a window or control,
- * see "Setting up a tooltip for a window".
- * 3. If you want the tooltip to be visible when the user moves the mouse over a rectangular area
- * defined by you, see "Setting up a tooltip with a trigger area".
- *
- * ### Setting up a tracking tooltip
- *
- *
- *
- * If your intent is to have the tooltip display when the user moves the mouse cursor over
- * a window or control, the relevant section below is "Setting up a tooltip for a window".
- *
- * - If your intent is to have the tooltip display when the user moves the mouse cursor over
- * a rectangular area within a window's client area, the relevant section below is "Setting
- * up a tooltip for a rectangular area".
- *
- *
- *
- * Minimally the `TTTOOLINFO` structure must have members "hwnd" and "uId". What this means
- * for us in our AHK code is that the `ToolInfo` object (from this library) must be associated
- * with a parent window, and must have an ID.
- *
- * Understand that neither the "hwnd" nor "uId" members of `TTTOOLINFO` are the same thing
- * as the tooltip's window handle.
- *
- * Depending on your use case, you may be able to leave one or both of "Hwnd" and "Id" unset.
- * The following sections can help you decide how to proceed.
- *
- * This library assists with the preparation and usage of three behavior patterns:
- *
- *
- * ### Setting up a tracking tooltip
- *
- * This information is for preparing a tooltip that your code will maintain full control of.
- * If you want the system to display / hide a tooltip when the user's mouse cursor enters
- * or leaves an area, read the other sections.
- *
- *
- *
- * This information is to help you set the correct values when your code will control the
- * activation, deactivation, and position of the tooltip. If your intent is to manipulate
- * the tooltip as-needed in your AHK code (as opposed to relying on the Windows API to display
- * and hide the tooltip when the user's mouse enters a certain area), then this is the sectionMany of the TTM window messages
- * require a `TTTOOLINFO` structure, and so even if you don't plan on associating a tooltip
- * with a particular tool, you may find that you still need to get a `ToolInfo` object to
- * use one of the methods.
- *
- * When you call the constructor `Xtooltip.Prototype.__New`, a generic `ToolInfo.Params` object
- * is created using the text passed to the constructor. It is safe to use this object for
- * any method that does not involve associating it with a new tool. To get a reference to
- * the object, access it from the "Tools" property, passing numeric zero (0) to the method
- * "Get":
- *
- * @example
- *  ; Get a `Xtooltip` object.
- *  xtt := Xtooltip("Hello, world!")
- *  ; Get a reference to the generic `ToolInfo.Params` object.
- *  TiParams := xtt.Tools.Get(0)
- *  ; Convert the `ToolInfo.Params` object to a `ToolInfo` object.
- *  ti := TiParams(xtt)
- * @
- *
- * Or to save a line of code, pass numeric zero (0) to the method "GetToolInfo" of the
- * `Xtooltip` object:
- *
- * @example
- *  ; Get a `Xtooltip` object.
- *  xtt := Xtooltip("Hello, world!")
- *  ; Get a reference to the generic `ToolInfo` object.
- *  ti := xtt.GetToolInfo(0)
- * @
- *
- * If you need a new generic `ToolInfo.Params` object, follow these steps:
- *
- * @example
- *  ; Assume we already have a `Xtooltip` object referenced by the symbol `xtt`.
- *  ; Get a new `ToolInfo.Params` object.
- *  TiParams := xtt.GetParamsGeneric()
- *  ; Make changes to the object.
- *  TiParams.Text := "Goodbye, world!"
- *  ; Validate the object. Errors should be handled during the development of the application.
- *  ; During development, I would just allow any errors to be thrown.
- *  TiParams.Validate()
- * @
- *
- * ### If the tool is a window
- *
- * This information is to help you set the correct values when the tool is a window (for
- * example, a gui control). The behavior we want is: When the user's mouse moves over the
- * window, the tooltip should display after a short delay. When the mouse leaves the window's
- * area, the tooltip should automatically hide after a short delay. To achieve this behavior,
- * follow these guidelines:
- *
- * - Set Params.Flags with TTF_IDISHWND. Unless you plan on enabling tracking behavior,
- *   you'll likely also want to include TTF_SUBCLASS. You'll know if you **don't** need
- *   TTF_SUBCLASS, so you should default to setting "Flags" with both TTF_IDISHWND and
- *   TTF_SUBCLASS, plus any other flags. Example: `Params.Flags := 0x0001 | 0x0010`
- * - Set `Params.Id` with the handle to the window (e.g. the handle to a gui control).
- * - If the window has a parent window, set `Params.Hwnd` with the handle to the parent window.
- *   If the window does not have a parent window, set `Params.Hwnd` with the same handle as "Id".
- *
- * You can use `ToolInfo.Params.GetWindow` or `ToolInfo.Params.GetToolControl` to get an
- * object with the minimum required properties. If you make changes to the properties, I
- * recommend calling `ToolInfo.Params.Prototype.Validate` within the same scope that your
- * code makes the changes to catch any problems immediately.
- *
- * ### If the tool is a rectangular area within a window's client area
- *
- * This information is to help you set the correct values when the tool is a rectangular
- * area within a window's client area. The behavior we want is: When the user's mouse moves
- * into the area, the tooltip should display after a short delay. When the mouse leaves
- * the window's area, the tooltip should automatically hide after a short delay. To
- * achieve this behavior, follow these guidelines:
- *
- * - Set `Params.Flags := TTF_SUBCLASS`.
- * - Set `Params.Hwnd` with the handle to the window whose client area contains the area
- *   that will be associated with the tooltip.
- * - Set properties "L", "T", "R", "B", with the left, top, right, and bottom client coordinates
- *   (that is, coordinates relative to the top-left corner of the window's client area).
- *
- * You can use `ToolInfo.Params.GetRect` to get an object with the minimum required
- * properties. If you make changes to the properties, I recommend  calling
- * `ToolInfo.Params.Prototype.Validate` within the same scope that your code makes the changes
- * to catch any problems immediately.
- *
- * ### Enable tracking
- *
- * This information is to help you set the correct values to enable tracking behavior. This
- * library does not implement TTM_TRACKACTIVATE or TTM_TRACKPOSITION messages. The Windows
- * API provides functions for associating a tooltip with a window and for using the window's
- * procedure for sending TTM_TRACKACTIVATE or TTM_TRACKPOSITION messages to the tooltip.
- * However, in our AHK code, we don't typically interact directly with a window procedure,
- * and writing that kind of code into this library is unnecessary because a tooltip is
- * a window and can be manipulated like any other window. To enable tracking behavior, all
- * we need is:
- * - An event that activates the tooltip by using `Xtooltip.Prototype.Show`.
- * - One or more events that adjusts the position of the tooltip by using
- *   `Xtooltip.Prototype.MoveWindow` or `Xtooltip.Prototype.MoveDisplay`.
- * - An event that deactivates the tooltip by using `Xtooltip.Prototype.Hide`.
- *
- * To this end, the needed properties for the `ToolInfo.Params` object are the same as
- * described in the section "If your code will control the tooltip's activation, deactivation,
- * and position".
- *
- * For further reading, these webpages contain instructions and guidance for creating a tooltip:
- * - How to create a tooltip for a gui control:
- * {@link https://learn.microsoft.com/en-us/windows/win32/controls/create-a-tooltip-for-a-control}.
- * - How to create a tooltip for a rectangular area:
- * {@link https://learn.microsoft.com/en-us/windows/win32/controls/create-a-tooltip-for-a-rectangular-area}.
- * - How to implement tracking tooltips (note this library does not implement TTM_TRACKACTIVATE
- *   nor TTM_TRACKPOSITION):
- * {@link https://learn.microsoft.com/en-us/windows/win32/controls/implement-tracking-tooltips}.
- * - How to implement multiline tooltips:
- * {@link https://learn.microsoft.com/en-us/windows/win32/controls/implement-multiline-tooltips}.
- * - How to implement balloon tooltips:
- * {@link https://learn.microsoft.com/en-us/windows/win32/controls/implement-balloon-tooltips}.
- * - How to implement tooltips for status bar icons:
- * {@link https://learn.microsoft.com/en-us/windows/win32/controls/implement-tooltips-for-status-bar-icons}.
- * - How to implement in-place tooltips:
- * {@link https://learn.microsoft.com/en-us/windows/win32/controls/implement-in-place-tooltips}.
  */
 class Xtooltip extends Xtooltip.Base {
     static __New() {
@@ -250,113 +10,264 @@ class Xtooltip extends Xtooltip.Base {
         className := 'tooltips_class32'
         this.ClassName := Buffer(StrPut(className, XTT_DEFAULT_ENCODING))
         StrPut(className, this.ClassName, XTT_DEFAULT_ENCODING)
-        this.ThemeCollection := this.ThemeGroupCollection := this.XtooltipCollection := ''
+        this.ThemeCollection := this.ThemeGroupCollection := this.XttCollection := ''
         proto := this.Prototype
         Proto.DefineProp('__Call', { Call: XttSetThreadDpiAwareness__Call })
-        Proto.__ThemeGroupName := Proto.__Theme := Proto.__Name := Proto.Hwnd := Proto.Font := ''
+        Proto.ThemeGroupName := Proto.__Theme := Proto.__Name := Proto.Hwnd := Proto.Font := ''
         Proto.TitleSize := 0
     }
+    /**
+     * Registers each of XttCollection, ThemeCollection, and ThemeGroupCollection. When new
+     * {@link Xtooltip}, {@link XttTheme}, and {@link XttThemeGroup} objects are created, they
+     * are added to their respective collection. Each collection is available from any instance
+     * of {@link Xtooltip}, {@link XttTheme}, or {@link XttThemeGroup} on properties ThemeCollection,
+     * ThemeGroupCollection, XttCollection, respectively.
+     *
+     * {@link Xtooltip} object are added to the collection by name if one is provided, otherwise
+     * by hwnd.
+     *
+     * {@link XttTheme} objects are added to the collection by name if one is provided. If a name
+     * is not provided, it is not added to the collection.
+     *
+     * {@link XttThemeGroup} objects are added to the collection by name.
+     *
+     * This library does not check for the existence of a name beforehand; if an object has already
+     * been added to a collection by a given name, it will be overwritten.
+     */
     static RegisterAllCollections() {
         this.RegisterThemeCollection()
         this.RegisterThemeGroupCollection()
-        this.RegisterXtooltipCollection()
+        this.RegisterXttCollection()
     }
     /**
+     * Registers the ThemeCollection. When new {@link XttTheme} objects are created, they
+     * are added to the collection. The collection is available from any instance
+     * of {@link Xtooltip}, {@link XttTheme}, or {@link XttThemeGroup} on property ThemeCollection.
      *
+     * {@link XttTheme} objects are added to the collection by name if one is provided. If a name
+     * is not provided, it is not added to the collection.
+     *
+     * This library does not check for the existence of a name beforehand; if an object has already
+     * been added to a collection by a given name, it will be overwritten.
      */
     static RegisterThemeCollection(ThemeCollection?, CaseSense := false) {
         return this.ThemeCollection := ThemeCollection ?? XttThemeCollection(CaseSense)
     }
+    /**
+     * Registers the ThemeGroupCollection. When new {@link XttThemeGroup} objects are created, they
+     * are added to the collection. The collection is available from any instance
+     * of {@link Xtooltip}, {@link XttTheme}, or {@link XttThemeGroup} on property ThemeGroupCollection.
+     *
+     * {@link XttThemeGroup} objects are added to the collection by name if one is provided.
+     *
+     * This library does not check for the existence of a name beforehand; if an object has already
+     * been added to a collection by a given name, it will be overwritten.
+     */
     static RegisterThemeGroupCollection(ThemeGroupCollection?, CaseSense := false) {
         return this.ThemeGroupCollection := ThemeGroupCollection ?? XttThemeGroupCollection(CaseSense)
     }
-    static RegisterXtooltipCollection(XtooltipCollectionObj?, CaseSense := false) {
-        return this.XtooltipCollection := XtooltipCollectionObj ?? XtooltipCollection(CaseSense)
+    /**
+     * Registers the XttCollection. When new {@link Xtooltip} objects are created, they
+     * are added to the collection. The collection is available from any instance
+     * of {@link Xtooltip}, {@link XttTheme}, or {@link XttThemeGroup} on property ThemeGroupCollection.
+     *
+     * {@link Xtooltip} object are added to the collection by name if one is provided, otherwise
+     * by hwnd.
+     *
+     * This library does not check for the existence of a name beforehand; if an object has already
+     * been added to a collection by a given name, it will be overwritten.
+     */
+    static RegisterXttCollection(XttCollectionObj?, CaseSense := false) {
+        return this.XttCollection := XttCollectionObj ?? XttCollection(CaseSense)
     }
+    /**
+     * Calls {@link Xtooltip.DeregisterThemeCollection}, {@link Xtooltip.DeregisterThemeGroupCollection},
+     * and {@link Xtooltip.DeregisterXttCollection}.
+     *
+     * @param {Boolean} [ClearCollection = false] - If true, calls `Map.Prototype.Clear` before
+     * settings the property to an empty string. If false, does not call `Map.Prototype.Clear`.
+     */
     static DeregisterAllCollections(ClearCollection := false) {
         this.DeregisterThemeCollection(ClearCollection)
         this.DeregisterThemeGroupCollection(ClearCollection)
-        this.DeregisterXtooltipCollection(ClearCollection)
+        this.DeregisterXttCollection(ClearCollection)
     }
+    /**
+     * @param {Boolean} [ClearCollection = false] - If true, calls `Map.Prototype.Clear` before
+     * settings the property to an empty string. If false, does not call `Map.Prototype.Clear`.
+     */
     static DeregisterThemeCollection(ClearCollection := false) {
         if ClearCollection {
             this.ThemeCollection.Clear()
         }
         this.ThemeCollection := ''
     }
+    /**
+     * @param {Boolean} [ClearCollection = false] - If true, calls `Map.Prototype.Clear` before
+     * settings the property to an empty string. If false, does not call `Map.Prototype.Clear`.
+     */
     static DeregisterThemeGroupCollection(ClearCollection := false) {
         if ClearCollection {
             this.ThemeGroupCollection.Clear()
         }
         this.ThemeGroupCollection := ''
     }
-    static DeregisterXtooltipCollection(ClearCollection := false) {
+    /**
+     * @param {Boolean} [ClearCollection = false] - If true, calls `Map.Prototype.Clear` before
+     * settings the property to an empty string. If false, does not call `Map.Prototype.Clear`.
+     */
+    static DeregisterXttCollection(ClearCollection := false) {
         if ClearCollection {
-            this.XtooltipCollection.Clear()
+            this.XttCollection.Clear()
         }
-        this.XtooltipCollection := ''
+        this.XttCollection := ''
     }
     /**
-     * @param {ToolInfo.Params|Object} TiParams - Either a `ToolInfo.Params` object, or an object
-     * that will be pass to `ToolInfo.Params`.
+     * @param {ToolInfo.Params|Object} TiParams - Either a {@link TtToolInfo.Params} object, or an object
+     * that will be pass to {@link TtToolInfo.Params}.
      */
-    __New(
-        hwndParent := A_ScriptHwnd
-      , Name := ''
-      , Theme?
-      , styleFlags := TTS_ALWAYSTIP
-      , exStyleFlags := WS_EX_TOPMOST
-      , CreateWindowOptions?
-    ) {
-        this.Tools := ToolInfoParamsCollection()
-        if IsSet(CreateWindowOptions) {
+    __New(Options?) {
+        if IsSet(Options) {
+            if Options.HasOwnProp('__Get') {
+                __get := Options.GetOwnPropDesc('__Get')
+            }
+            Options.DefineProp('__Get', { Call: _Get.Bind(Xtooltip.Options.Default) })
+            if Options.AlwaysOnTop {
+                if Options.Style {
+                    style := Options.Style | TTS_ALWAYSTIP
+                } else {
+                    style := TTS_ALWAYSTIP
+                }
+                if Options.ExStyle {
+                    exStyle := Options.ExStyle | WS_EX_TOPMOST
+                } else {
+                    exStyle := WS_EX_TOPMOST
+                }
+            } else {
+                style := Options.Style
+                exStyle := Options.ExStyle
+            }
             hwnd := this.Hwnd := DllCall(
                 'CreateWindowExW'
-              , 'uint', exStyleFlags            ; dwExStyle
-              , 'ptr', Xtooltip.ClassName       ; lpClassName
-              , 'ptr', HasProp(CreateWindowOptions, 'lpWindowName') ? CreateWindowOptions.lpWindowName : 0
-              , 'uint', styleFlags              ; dwStyle
-              , 'int', CW_USEDEFAULT            ; X
-              , 'int', CW_USEDEFAULT            ; Y
-              , 'int', CW_USEDEFAULT            ; nWidth
-              , 'int', CW_USEDEFAULT            ; nHeight
-              , 'ptr', hwndParent               ; hWndParent
-              , 'ptr', HasProp(CreateWindowOptions, 'hMenu') ? CreateWindowOptions.hMenu : 0
-              , 'ptr', HasProp(CreateWindowOptions, 'hInstance') ? CreateWindowOptions.hInstance : 0
-              , 'ptr', HasProp(CreateWindowOptions, 'lpParam') ? CreateWindowOptions.lpParam : 0
+              , 'uint', exStyle             ; dwExStyle
+              , 'ptr', Xtooltip.ClassName   ; lpClassName
+              , 'ptr', Options.WindowName   ; lpWindowName
+              , 'uint', style               ; dwStyle
+              , 'int', Options.X            ; X
+              , 'int', Options.Y            ; Y
+              , 'int', Options.W            ; nWidth
+              , 'int', Options.H            ; nHeight
+              , 'ptr', Options.HwndParent   ; hWndParent
+              , 'ptr', Options.Menu         ; hMenu
+              , 'ptr', Options.Instance     ; hInstance
+              , 'ptr', Options.Param        ; lpParam
+              , 'ptr'
             )
+            if hresult := DllCall('UxTheme.dll\SetWindowTheme', 'ptr', hwnd, 'ptr', 0, 'str', '', 'uint') {
+                throw OSError('``SetWindowTheme`` failed.', -1, hresult)
+            }
+            this.__Name := Options.Name
+            lf := this.Font := XttLogfont(hwnd)
+            if Options.Theme {
+                if IsObject(Options.Theme) {
+                    Options.Theme.Apply(this)
+                } else if this.ThemeCollection {
+                    this.ThemeCollection.Get(Options.Theme).Apply(this)
+                } else {
+                    throw Error('A theme collection has not been registered.')
+                }
+            } else if Options.ThemeGroup {
+                if IsObject(Options.ThemeGroup) {
+                    Options.ThemeGroup.XttAdd(this)
+                } else if this.ThemeGroupCollection {
+                    this.ThemeGroupCollection.Get(Options.ThemeGroup).XttAdd(this)
+                } else {
+                    throw Error('A theme group collection has not been registered.')
+                }
+            } else {
+                lf.Escapement := Options.Escapement
+                if Options.FaceName {
+                    lf.FaceName := Options.FaceName
+                }
+                if Options.FontSize {
+                    lf.FontSize := Options.FontSize
+                }
+                lf.Italic := Options.Italic
+                lf.Quality := Options.Quality
+                lf.Strikeout := Options.Strikeout
+                lf.Underline := Options.Underline
+                lf.Weight := Options.Weight
+                lf.Apply()
+                if Options.BackColor {
+                    this.SetBackColor(Options.BackColor)
+                }
+                if Options.Title {
+                    this.SetTitle(Options.Title, Options.Icon)
+                } else if Options.Icon {
+                    throw ValueError('Tooltips cannot have an icon without a title.')
+                }
+                if IsNumber(Options.Margins) {
+                    rc := XttRect()
+                    rc.L := IsNumber(Options.MarginL) ? Options.MarginL : Options.Margins
+                    rc.T := IsNumber(Options.MarginT) ? Options.MarginT : Options.Margins
+                    rc.R := IsNumber(Options.MarginR) ? Options.MarginR : Options.Margins
+                    rc.B := IsNumber(Options.MarginB) ? Options.MarginB : Options.Margins
+                    this.SetMargin2(rc)
+                } else {
+                    rc := XttRect()
+                    for char in XttTheme.ListMargin {
+                        if Options.Margin%char% {
+                            rc.%char% := Options.Margin%char%
+                            flag_margin := 1
+                        }
+                        if IsSet(flag_margin) {
+                            this.SetMargin2(rc)
+                        }
+                    }
+
+                }
+                if Options.MaxWidth {
+                    this.SetMaxWidth(Options.MaxWidth)
+                }
+                if Options.TextColor {
+                    this.SetTextColor(Options.TextColor)
+                }
+            }
+            if this.XttCollection {
+                this.XttCollection.Set(Options.Name || hwnd, this)
+            }
+            if IsSet(__get) {
+                Options.DefineProp('__Get', __get)
+            } else {
+                Options.DeleteProp('__Get')
+            }
+            this.Update()
         } else {
             hwnd := this.Hwnd := DllCall(
                 'CreateWindowExW'
-              , 'uint', exStyleFlags            ; dwExStyle
+              , 'uint', 0                       ; dwExStyle
               , 'ptr', Xtooltip.ClassName       ; lpClassName
               , 'ptr', 0                        ; lpWindowName
-              , 'uint', styleFlags              ; dwStyle
-              , 'int', CW_USEDEFAULT            ; X
-              , 'int', CW_USEDEFAULT            ; Y
-              , 'int', CW_USEDEFAULT            ; nWidth
-              , 'int', CW_USEDEFAULT            ; nHeight
-              , 'ptr', hwndParent               ; hWndParent
+              , 'uint', 0                       ; dwStyle
+              , 'int', 0                        ; X
+              , 'int', 0                        ; Y
+              , 'int', 0                        ; nWidth
+              , 'int', 0                        ; nHeight
+              , 'ptr', A_ScriptHwnd             ; hWndParent
               , 'ptr', 0                        ; hMenu
               , 'ptr', 0                        ; hInstance
               , 'ptr', 0                        ; lpParam
             )
-        }
-        WinSetAlwaysOnTop(true, hwnd)
-        if hresult := DllCall('UxTheme.dll\SetWindowTheme', 'ptr', hwnd, 'ptr', 0, 'str', '', 'uint') {
-            throw OSError('``SetWindowTheme`` failed.', -1, hresult)
-        }
-        this.Font := Logfont(hwnd)
-        if IsSet(Theme) {
-            Theme.Apply(this)
-        } else {
-            this.__Theme := ''
-        }
-        this.__Name := Name
-        if this.XtooltipCollection {
-            this.XtooltipCollection.Set(Name || hwnd, this)
+            if hresult := DllCall('UxTheme.dll\SetWindowTheme', 'ptr', hwnd, 'ptr', 0, 'str', '', 'uint') {
+                throw OSError('``SetWindowTheme`` failed.', -1, hresult)
+            }
+            lf := this.Font := XttLogfont(hwnd)
+            if this.XttCollection {
+                this.XttCollection.Set(hwnd, this)
+            }
         }
         this.HasTrackingTool := 0
+        this.Tools := ToolInfoParamsCollection()
         ; I found this to be necessary to avoid an invalid memory read/write error when using a debugger.
         ; If I used a local scoped variable in the function `Xtooltip.Prototype.GetTitle` to reference
         ; the buffer, even though function would be valid and not present any issues during a normal
@@ -364,27 +275,43 @@ class Xtooltip extends Xtooltip.Base {
         ; the property "Title", I would get the error. I presumed this was due to how the buffer
         ; variable was being handled. Reusing a buffer set on an object property fixed the issue.
         this.TtGetTitle := TtGetTitle(this, , false)
+
+        return
+
+        _Get(default, self, name, *) {
+            return default.%name%
+        }
     }
+    /**
+     * Sends {@link https://learn.microsoft.com/en-us/windows/win32/controls/ttm-activate TTM_ACTIVATE}.
+     * @param {Boolean} [Value = true] - Activation flag. If this parameter is TRUE, the tooltip
+     * control is activated. If it is FALSE, the tooltip control is deactivated.
+     */
     Activate(Value := true) {
         this.__Active := Value
         return SendMessage(TTM_ACTIVATE, Value, 0, this.Hwnd)
     }
     /**
-     * @description - Adds a `ToolInfo.Params` object to the collection set on property "Tools".
+     * @description - Adds a {@link TtToolInfo.Params} object to the collection set on property {@link Xtooltip#Tools}.
      * Sends the TTM_ADDTOOLW message to the tooltip.
      *
-     * @param {ToolInfo.Params|Object} TiParams - Either a `ToolInfo.Params` object, or an object
-     * with property:value pairs specifying the values of the members of the `TTTOOLINFO` structure
+     * Only one tool with TTF_TRACK can be used with a tooltip. If `TiParams` has the TTF_TRACK flag
+     * and property {@link Xtooltip#HasTrackingTool} != 0, an error is thrown.
+     *
+     * @param {ToolInfo.Params|Object} TiParams - Either a {@link TtToolInfo.Params} object, or an object
+     * with property:value pairs specifying the values of the members of the TTTOOLINFO structure
      * to which the object will be associated. See {@link ToolInfo.Params} and {@link ToolInfo.Params#__New}
-     * for more information. If `TiParams` is not a `ToolInfo.Params` object, it will be passed to
-     * `ToolInfo.Params.Prototype.__New`.
+     * for more information. If `TiParams` is not a {@link TtToolInfo.Params} object, it will be passed to
+     * {@link ToolInfo.Params.Prototype.__New}.
      * @param {String|Buffer} Text - The string that the tooltip will display, or a buffer containing
      * the string.
-     * @param {String} Key - The "key" to associate with the `ToolInfo.Params` object.
+     * @param {String} Key - The "key" to associate with the {@link TtToolInfo.Params} object.
+     *
+     * @throws {Error} - "Only one tracking tool can be added to an Xtooltip at a time."
      */
     AddTool(TiParams, Text, Key, Activate := true) {
-        if not TiParams is ToolInfo.Params {
-            TiParams := ToolInfo.Params(this, TiParams)
+        if not TiParams is TtToolInfo.Params {
+            TiParams := TtToolInfo.Params(this, TiParams)
         }
         if HasProp(TiParams, 'Flags') && TiParams.Flags & TTF_TRACK {
             if this.HasTrackingTool {
@@ -400,11 +327,11 @@ class Xtooltip extends Xtooltip.Base {
         SendMessage(TTM_ACTIVATE, true, 0, this.hwnd)
     }
     /**
-     * @description - Creates a `ToolInfo.Params` object with the needed values to associate
+     * @description - Creates a {@link TtToolInfo.Params} object with the needed values to associate
      * a tooltip with a `Gui.Control` object. Whenever the user's mouse cursor hovers over the
      * control, the tooltip will display after a short delay. When the cursor leaves the control's
      * area, the tooltip will hide after a short delay.
-     * @param {String} Key - The "key" to associate with the `ToolInfo.Params` object.
+     * @param {String} Key - The "key" to associate with the {@link TtToolInfo.Params} object.
      * @param {String|Buffer} Text - The string that the tooltip will display, or a buffer containing
      * the string.
      * @param {Gui.Control} Ctrl - The `Gui.Control` object.
@@ -423,17 +350,19 @@ class Xtooltip extends Xtooltip.Base {
         )
     }
     /**
-     * @description - Creates a `ToolInfo.Params` object with the needed values to associate
+     * @description - Creates a {@link TtToolInfo.Params} object with the needed values to associate
      * a tooltip with a `Gui.Control`'s client area. Whenever the user's mouse cursor enters into
      * the area, the tooltip will display after a short delay. When the cursor leaves the area, the
      * tooltip will hide after a short delay.
-     * @param {String} Key - The "key" to associate with the `ToolInfo.Params` object.
+     * @param {String} Key - The "key" to associate with the {@link TtToolInfo.Params} object.
      * @param {String|Buffer} Text - The string that the tooltip will display, or a buffer containing
      * the string.
      * @param {Gui.Control} Ctrl - The `Gui.Control` object.
+     * @param {Integer} [Id] - The value to assign to the "uId" member of TTTOOLINFO. If unset,
+     * {@link TtToolInfo.GetUid} will assign the value.
      * @returns {ToolInfo}
      */
-    AddControlRect(Key, Text, Ctrl) {
+    AddControlRect(Key, Text, Ctrl, Id?) {
         rc := XttRect.Window(Ctrl.Hwnd)
         DllCall('ScreenToClient', 'ptr', Ctrl.Gui.Hwnd, 'ptr', rc.Ptr, 'int')
         DllCall('ScreenToClient', 'ptr', Ctrl.Gui.Hwnd, 'ptr', rc.Ptr + 8, 'int')
@@ -442,7 +371,7 @@ class Xtooltip extends Xtooltip.Base {
           , {
                 ttHwnd: this.Hwnd
               , Hwnd: Ctrl.Gui.Hwnd
-              , Id: Id ?? ToolInfo.GetUid()
+              , Id: Id ?? TtToolInfo.GetUid()
               , Flags: TTF_SUBCLASS
               , L: rc.L
               , T: rc.T
@@ -453,11 +382,11 @@ class Xtooltip extends Xtooltip.Base {
         )
     }
     /**
-     * @description - Creates a `ToolInfo.Params` object with the needed values to associate
+     * @description - Creates a {@link TtToolInfo.Params} object with the needed values to associate
      * a tooltip with a rectangular area within a window's client area. Whenever the user's mouse
      * cursor enters into the area, the tooltip will display after a short delay. When the cursor
      * leaves the area, the tooltip will hide after a short delay.
-     * @param {String} Key - The "key" to associate with the `ToolInfo.Params` object.
+     * @param {String} Key - The "key" to associate with the {@link TtToolInfo.Params} object.
      * @param {String|Buffer} Text - The string that the tooltip will display, or a buffer containing
      * the string.
      * @param {Integer} ParentHwnd - The handle to the window containing the rectangle.
@@ -465,8 +394,8 @@ class Xtooltip extends Xtooltip.Base {
      * @param {Integer} [T] - The top client coordinate position.
      * @param {Integer} [R] - The right client coordinate position.
      * @param {Integer} [B] - The bottom client coordinate position.
-     * @param {Integer} [Id] - The value to assign to the "uId" member of `TTTOOLINFO`. If unset,
-     * `ToolInfo.Params.GetTracking` will assign the value.
+     * @param {Integer} [Id] - The value to assign to the "uId" member of TTTOOLINFO. If unset,
+     * {@link TtToolInfo.GetUid} will assign the value.
      * @returns {ToolInfo.Params}
      */
     AddRect(Key, Text, ParentHwnd, L?, T?, R?, B?, Id?) {
@@ -476,7 +405,7 @@ class Xtooltip extends Xtooltip.Base {
           , {
                 ttHwnd: this.Hwnd
               , Hwnd: ParentHwnd
-              , Id: Id ?? ToolInfo.GetUid()
+              , Id: Id ?? TtToolInfo.GetUid()
               , Flags: TTF_SUBCLASS
               , L: L ?? rc.L
               , T: T ?? rc.T
@@ -487,18 +416,18 @@ class Xtooltip extends Xtooltip.Base {
         )
     }
     /**
-     * @description - Creates a `ToolInfo.Params` with the needed values to create a tracking tooltip
+     * @description - Creates a {@link TtToolInfo.Params} with the needed values to create a tracking tooltip
      * (a tooltip which your code has full control over its visibility and position).
      *
      * Note that only one tracking tool can be added to a single Xtooltip.
      *
-     * @param {String} Key - The "key" to associate with the `ToolInfo.Params` object.
+     * @param {String} Key - The "key" to associate with the {@link TtToolInfo.Params} object.
      * @param {String|Buffer} Text - The string that the tooltip will display or a buffer
      * containing the string.
      * @param {Integer} [ParentHwnd] - If set, the handle to the tooltip's parent window. If
      * unset, `A_ScriptHwnd` is used.
-     * @param {Integer} [Id] - The value to assign to the "uId" member of `TTTOOLINFO`. If unset,
-     * `Xtooltip.Prototype.AddTracking` will assign the value.
+     * @param {Integer} [Id] - The value to assign to the "uId" member of TTTOOLINFO. If unset,
+     * {@link TtToolInfo.GetUid} will assign the value.
      * @param {Boolean} [Show = XTT_DEFAULT_SHOW] - If true, the tool is shown immediately by the mouse
      * cursor.
      * @returns {ToolInfo}
@@ -512,7 +441,7 @@ class Xtooltip extends Xtooltip.Base {
           , {
                 ttHwnd: this.Hwnd
               , Hwnd: ParentHwnd ?? A_ScriptHwnd
-              , Id: uId ?? ToolInfo.GetUid()
+              , Id: Id ?? TtToolInfo.GetUid()
               , Flags: TTF_ABSOLUTE | TTF_TRACK
             }
           , Text
@@ -525,12 +454,12 @@ class Xtooltip extends Xtooltip.Base {
         return ti
     }
     /**
-     * @description - Creates a `ToolInfo.Params` object with the needed values to associate
+     * @description - Creates a {@link TtToolInfo.Params} object with the needed values to associate
      * a tooltip with a window. Whenever the user's mouse cursor hovers over the window's client
      * area, the tooltip will display after a short delay. When the cursor leaves the window's
      * client area, the tooltip will hide after a short delay.
-     * @param {String} Key - The "key" to associate with the `ToolInfo.Params` object.
-     * @param {String|Buffer} Text - If set, the string that the tooltip will display or a buffer
+     * @param {String} Key - The "key" to associate with the {@link TtToolInfo.Params} object.
+     * @param {String|Buffer} Text - The string that the tooltip will display or a buffer
      * containing the string.
      * @param {Integer} ToolHwnd - The handle to the window to associate with the tool.
      * @returns {ToolInfo.Params}
@@ -547,20 +476,32 @@ class Xtooltip extends Xtooltip.Base {
           , Text
         )
     }
+    /**
+     * Sends {@link https://learn.microsoft.com/en-us/windows/win32/controls/ttm-adjustrect TTM_ADJUSTRECT}.
+     * @param {XttRect|Buffer} RectObj - The {@link XttRect} or similar buffer.
+     * @param {Boolean} [Flag = true] - The value to pass to wParam. If TRUE, `RectObj` is used to
+     * specify a text-display rectangle and it receives the corresponding window rectangle. If FALSE,
+     * `RectObj` is used to specify a window rectangle and it receives the corresponding text
+     * display rectangle.
+     * @returns {XttRect|Buffer} - The adjusted {@link XttRect} or buffer.
+     */
+    AdjustRect(RectObj, Flag := true) {
+        SendMessage(TTM_ADJUSTRECT, Flag, RectObj.Ptr, this.Hwnd)
+        return RectObj
+    }
+    /**
+     * Sends {@link https://learn.microsoft.com/en-us/windows/win32/controls/ttm-deltool TTM_DELTOOL}.
+     * @param {String} Key - The key associated with the tool.
+     */
     DelTool(Key) {
         TiParams := this.Tools.Get(Key)
         this.Tools.Delete(Key)
-        ti := ToolInfo(this.Hwnd, tiParams.Hwnd, tiParams.Id)
+        ti := TtToolInfo(this.Hwnd, tiParams.Hwnd, tiParams.Id)
         SendMessage(TTM_DELTOOLW, 0, ti.Ptr, this.Hwnd)
     }
-    DisplayToWindowRect(L, T, R, B, Move := true) {
-        rc := XttRect(L, T, R, B)
-        SendMessage(TTM_ADJUSTRECT, true, rc.Ptr, this.Hwnd)
-        if Move {
-            WinMove(rc.L, rc.T, rc.W, rc.H, this.Hwnd)
-        }
-        return rc
-    }
+    /**
+     * Destroys the tools then the tooltip.
+     */
     Dispose() {
         hwnd := this.Hwnd
         if _name := this.__Name || hwnd {
@@ -569,8 +510,8 @@ class Xtooltip extends Xtooltip.Base {
                     themeGroup.Delete(_name)
                 }
             }
-            if this.XtooltipCollection && this.XtooltipCollection.Has(_name) {
-                this.XtooltipCollection.Delete(_name)
+            if this.XttCollection && this.XttCollection.Has(_name) {
+                this.XttCollection.Delete(_name)
             }
             if this.HasOwnProp('__Name') {
                 this.DeleteProp('__Name')
@@ -582,13 +523,13 @@ class Xtooltip extends Xtooltip.Base {
         }
         if hwnd {
             for key, tiParams in this.Tools {
-                ti := ToolInfo(hwnd, tiParams.Hwnd, tiParams.Id)
+                ti := TtToolInfo(hwnd, tiParams.Hwnd, tiParams.Id)
                 SendMessage(TTM_DELTOOLW, 0, ti.Ptr, hwnd)
             }
             if this.GetToolCount() {
                 list := []
                 loop this.GetToolCount() {
-                    list.Push(ToolInfo(hwnd, , , 160))
+                    list.Push(TtToolInfo(hwnd, , , 160))
                     SendMessage(TTM_ENUMTOOLSW, A_Index - 1, list[-1].Ptr, hwnd)
                 }
                 for ti in list {
@@ -601,6 +542,30 @@ class Xtooltip extends Xtooltip.Base {
             this.DeleteProp('Hwnd')
         }
     }
+    /**
+     * Find a {@link TtToolInfo.Params} object using the hwnd and id.
+     *
+     * @param {Integer} toolHwnd - The hwnd passed to {@link TtToolInfo.Prototype.__New~toolHwnd}.
+     * The following are descriptions of what is passed to `toolHwnd` from the indicated methods:
+     * - {@link Xtooltip.Prototype.AddControl} - The control's parent gui's hwnd.
+     * - {@link Xtooltip.Prototype.AddControlRect} - The control's parent gui's hwnd.
+     * - {@link Xtooltip.Prototype.AddRect} - The value passed to `ParentHwnd`.
+     * - {@link Xtooltip.Prototype.AddTracking} - The value passed to `ParentHwnd` or `A_ScriptHwnd`
+     *   if unset.
+     * - {@link Xtooltip.Prototype.AddWindow} - The value passed to `ToolHwnd` or `ToolHwnd` was
+     *   a child window, the return value from `DllCall('GetAncestor', 'ptr', ToolHwnd, 'uint', 1, 'ptr')`.
+     *
+     * @param {Integer} toolId - The id passed to {@link TtToolInfo.Prototype.__New~uId}.
+     * The following are descriptions of what is passed to `uId` from the indicated methods:
+     * - {@link Xtooltip.Prototype.AddControl} - The control's hwnd.
+     * - {@link Xtooltip.Prototype.AddControlRect} - The value passed to `Id`, or if unset,
+     *   the return value from {@link Xtooltip.GetUid}.
+     * - {@link Xtooltip.Prototype.AddRect} - The value passed to `Id`, or if unset,
+     *   the return value from {@link Xtooltip.GetUid}.
+     * - {@link Xtooltip.Prototype.AddTracking} - The value passed to `Id`, or if unset,
+     *   the return value from {@link Xtooltip.GetUid}.
+     * - {@link Xtooltip.Prototype.AddWindow} - The value passed to `ToolHwnd`.
+     */
     FindToolInfoParams(toolHwnd, toolId) {
         for key, TiParams in this.Tools {
             if TiParams.Hwnd = toolHwnd && TiParams.Id = toolId {
@@ -608,9 +573,20 @@ class Xtooltip extends Xtooltip.Base {
             }
         }
     }
+    /**
+     * Sends {@link https://learn.microsoft.com/en-us/windows/win32/controls/ttm-gettipbkcolor TTM_GETTIPBKCOLOR}.
+     */
     GetBackColor() {
         return SendMessage(TTM_GETTIPBKCOLOR, 0, 0, this.Hwnd)
     }
+    /**
+     * Sends {@link https://learn.microsoft.com/en-us/windows/win32/controls/ttm-getbubblesize TTM_GETBUBBLESIZE}.
+     * @param {String} [Key] - The "key" associated with a {@link TtToolInfo.Params} object.
+     * @param {VarRef} [OutWidth] - A variable that will receive the width.
+     * @param {VarRef} [OutHeight] - A variable that will receive the height.
+     * @returns {Integer} - Returns the width of the tooltip in the low word and the height in the
+     * high word if successful. Otherwise, it returns FALSE.
+     */
     GetBubbleSize(Key?, &OutWidth?, &OutHeight?) {
         ti := this.GetToolInfoObj(Key ?? unset)
         if sz := SendMessage(TTM_GETBUBBLESIZE, 0, ti.Ptr, this.Hwnd) {
@@ -624,39 +600,52 @@ class Xtooltip extends Xtooltip.Base {
     /**
      * @description - Attempts to get the current tool by sending TTM_GETCURRENTTOOLW. TTM_GETCURRENTTOOLW
      * will only retrieve the tooltip's text if the character count of the string is 79 or less
+     * Sends {@link https://learn.microsoft.com/en-us/windows/win32/controls/ttm-getcurrenttool TTM_GETCURRENTTOOL}.
+     * @param {VarRef} [OutToolInfo] - A variable that will receive the {@link TtToolInfo} object.
+     * @returns {Integer} - Returns nonzero if successful, or zero otherwise.
      */
     GetCurrentTool(&OutToolInfo?) {
-        OutToolInfo := ToolInfo(this.Hwnd, , , 160)
+        OutToolInfo := TtToolInfo(this.Hwnd, , , 160)
         return SendMessage(TTM_GETCURRENTTOOLW, 0, OutToolInfo.Ptr, this.Hwnd)
     }
     /**
+     * Sends {@link https://learn.microsoft.com/en-us/windows/win32/controls/ttm-getdelaytime TTM_GETDELAYTIME}.
      * @param {Integer} [Flag = 0] - One of the following:
-     * TTDT_AUTOMATIC          0
-     * TTDT_RESHOW             1
-     * TTDT_AUTOPOP            2
-     * TTDT_INITIAL            3
+     * - TTDT_AUTOMATIC - 0
+     * - TTDT_RESHOW - 1
+     * - TTDT_AUTOPOP - 2
+     * - TTDT_INITIAL - 3
      * @returns {Integer} - The duration in milliseconds.
      */
     GetDelayTime(Flag := 0) {
         return SendMessage(TTM_GETDELAYTIME, Flag, 0, this.Hwnd)
     }
-    GetDisplayRect() {
-        rc := XttRect.Window(this.Hwnd)
-        SendMessage(TTM_ADJUSTRECT, false, rc.Ptr, this.Hwnd)
-        return rc
-    }
+    /**
+     * Sends {@link https://learn.microsoft.com/en-us/windows/win32/controls/ttm-getmargin TTM_GETMARGIN}.
+     * @returns {XttRect}
+     */
     GetMargin() {
         rc := XttRect()
         SendMessage(TTM_GETMARGIN, 0, rc.Ptr, this.Hwnd)
         return rc
     }
-    GetMaxTipWidth() {
+    /**
+     * Sends {@link https://learn.microsoft.com/en-us/windows/win32/controls/ttm-getmaxtipwidth TTM_GETMAXTIPWIDTH}.
+     * @returns {Integer}
+     */
+    GetMaxWidth() {
         return SendMessage(TTM_GETMAXTIPWIDTH, 0, 0, this.Hwnd)
     }
+    /**
+     * Sends {@link https://learn.microsoft.com/en-us/windows/win32/controls/ttm-gettext TTM_GETTEXT}.
+     * @param {String} [Key] - The "key" associated with a {@link TtToolInfo.Params} object.
+     * @param {Integer} [MaxChars] - The maximum characters to acquire from the tooltip.
+     * @returns {String}
+     */
     GetText(Key?, MaxChars?) {
         if IsSet(Key) {
             tiParams := this.Tools.Get(Key)
-            ti := ToolInfo(this.Hwnd, tiParams.Hwnd, tiParams.Id)
+            ti := TtToolInfo(this.Hwnd, tiParams.Hwnd, tiParams.Id)
             if !IsSet(MaxChars) {
                 MaxChars := tiParams.TextSize
             }
@@ -674,7 +663,7 @@ class Xtooltip extends Xtooltip.Base {
                 if IsSet(tiParams) {
                     MaxChars := tiParams.TextSize
                 } else {
-                    throw Error('Unable to retrieve the ``ToolInfo.Params`` object associated with the current tool.', -1)
+                    throw Error('Unable to retrieve the ``TtToolInfo.Params`` object associated with the current tool.', -1)
                 }
             }
         } else {
@@ -684,24 +673,54 @@ class Xtooltip extends Xtooltip.Base {
         SendMessage(TTM_GETTEXTW, MaxChars, ti.Ptr, this.Hwnd)
         return ti.Text
     }
+    /**
+     * Sends {@link https://learn.microsoft.com/en-us/windows/win32/controls/ttm-gettiptextcolor TTM_GETTIPTEXTCOLOR}.
+     * @returns {Integer}
+     */
     GetTextColor() {
         return SendMessage(TTM_GETTIPTEXTCOLOR, 0, 0, this.Hwnd)
     }
-    GetTitle(MaxChars?) {
-        return TtGetTitle(this, MaxChars ?? this.TitleSize)
+    /**
+     * Sends {@link https://learn.microsoft.com/en-us/windows/win32/controls/ttm-gettitle TTM_GETTITLE}.
+     * @param {Integer} [MaxChars] - The maximum characters to acquire from the tooltip.
+     * @param {VarRef} [OutIcon] - A variable that will receive the tooltip's icon.
+     * @returns {String}
+     */
+    GetTitle(MaxChars?, &OutIcon?) {
+        _ttGetTitle := TtGetTitle(this, MaxChars ?? this.TitleSize)
+        OutIcon := _ttGetTitle.uTitleBitmap
+        return _ttGetTitle.Title
     }
+    /**
+     * Sends {@link https://learn.microsoft.com/en-us/windows/win32/controls/ttm-gettoolcount TTM_GETTOOLCOUNT}.
+     * @returns {Integer}
+     */
     GetToolCount() {
         return SendMessage(TTM_GETTOOLCOUNT, 0, 0, this.Hwnd)
     }
+    /**
+     * Sends {@link https://learn.microsoft.com/en-us/windows/win32/controls/ttm-gettoolinfo TTM_GETTOOLINFO}.
+     * @returns {TtToolInfo}
+     */
     GetToolInfo(toolHwnd, toolId) {
-        ti := ToolInfo(this.Hwnd, toolHwnd, toolId)
+        ti := TtToolInfo(this.Hwnd, toolHwnd, toolId)
         SendMessage(TTM_GETTOOLINFOW, 0, ti.Ptr, this.Hwnd)
         return ti
     }
+    /**
+     * Gets a {@link TtToolInfo} object using the {@link TtToolInfo.Params} associated with `Key`, or
+     * if `Key` is unset, the current tool.
+     * Sends {@link https://learn.microsoft.com/en-us/windows/win32/controls/ttm-gettoolinfo TTM_GETTOOLINFO}.
+     *
+     * @param {String} [Key] - The "key" associated with a {@link TtToolInfo.Params} object. If unset,
+     * gets information about the current tool.
+     *
+     * @returns {TtToolInfo}
+     */
     GetToolInfoObj(Key?) {
         if IsSet(Key) {
             tiParams := this.Tools.Get(Key)
-            ti := ToolInfo(this.Hwnd, tiParams.Hwnd, tiParams.Id)
+            ti := TtToolInfo(this.Hwnd, tiParams.Hwnd, tiParams.Id)
             SendMessage(TTM_GETTOOLINFOW, 0, ti.Ptr, this.Hwnd)
             return ti
         } else if this.GetToolCount() {
@@ -711,44 +730,84 @@ class Xtooltip extends Xtooltip.Base {
             throw Error('The tooltip does not have an active tool.', -1)
         }
     }
+    /**
+     * Returns nonzero if the tool has the TTF_TRACK flag.
+     *
+     * @param {String} [Key] - The "key" associated with a {@link TtToolInfo.Params} object. If unset,
+     * gets information about the current tool.
+     *
+     * @returns {Integer} - Nonzero if the tool has the TTF_TRACK flag, else zero.
+     */
     IsTracking(Key?) {
         return this.GetToolInfoObj(Key ?? unset).Flags & TTF_TRACK
     }
+    /**
+     * Sends {@link https://learn.microsoft.com/en-us/windows/win32/controls/ttm-newtoolrect TTM_NEWTOOLRECT}.
+     *
+     * @param {String} [Key] - The "key" associated with a {@link TtToolInfo.Params} object.
+     * @param {XttRect|Buffer} RectObj - The {@link XttRect} or similar buffer.
+     */
     NewToolRect(Key, RectObj) {
         TiParams := this.Tools.Get(Key)
-        ti := ToolInfo(this.Hwnd, TiParams.Hwnd, TiParams.Id)
+        ti := TtToolInfo(this.Hwnd, TiParams.Hwnd, TiParams.Id)
         ti.L := RectObj.L
         ti.T := RectObj.T
         ti.R := RectObj.R
         ti.B := RectObj.B
         SendMessage(TTM_NEWTOOLRECTW, 0, ti.Ptr, this.Hwnd)
     }
+    /**
+     * Sends {@link https://learn.microsoft.com/en-us/windows/win32/controls/ttm-pop TTM_POP}.
+     */
     Pop() {
         SendMessage(TTM_POP, 0, 0, this.Hwnd)
     }
+    /**
+     * Sends {@link https://learn.microsoft.com/en-us/windows/win32/controls/ttm-popup TTM_POPUP}.
+     */
     Popup() {
         SendMessage(TTM_POPUP, 0, 0, this.Hwnd)
     }
+    /**
+     * Sends {@link https://learn.microsoft.com/en-us/windows/win32/controls/ttm-settipbkcolor TTM_SETTIPBKCOLOR}.
+     * Also see {@link Xtooltip.Prototype.SetBackColorRGB}.
+     * @param {Integer} Color - The COLORREF value.
+     */
     SetBackColor(Color) {
         SendMessage(TTM_SETTIPBKCOLOR, Color, 0, this.Hwnd)
     }
+    /**
+     * Sends {@link https://learn.microsoft.com/en-us/windows/win32/controls/ttm-settipbkcolor TTM_SETTIPBKCOLOR}.
+     * Also see {@link Xtooltip.Prototype.SetBackColor}.
+     * @param {Integer} R - The 0-255 red value.
+     * @param {Integer} G - The 0-255 green value.
+     * @param {Integer} B - The 0-255 blue value.
+     */
     SetBackColorRGB(R, G, B) {
         SendMessage(TTM_SETTIPBKCOLOR, XttRGB(R, G, B), 0, this.Hwnd)
     }
     /**
+     * Sends {@link https://learn.microsoft.com/en-us/windows/win32/controls/ttm-setdelaytime TTM_SETDELAYTIME}.
      * @param {Integer} Delay - The new delay in milliseconds.
      * @param {Integer} [Flag = 0] - One of the following:
      * - 0 : TTDT_AUTOMATIC
      * - 1 : TTDT_RESHOW
      * - 2 : TTDT_AUTOPOP
      * - 3 : TTDT_INITIAL
-     * Descriptions of these are available here:
-     * {@link https://learn.microsoft.com/en-us/windows/win32/controls/ttm-setdelaytime}.
      */
     SetDelayTime(Delay, Flag := 0) {
         SendMessage(TTM_SETDELAYTIME, Flag, Delay & 0xFFFF, this.Hwnd)
-        this.Update()
     }
+    /**
+     * Sends {@link https://learn.microsoft.com/en-us/windows/win32/controls/ttm-setmargin TTM_SETMARGIN}.
+     *
+     * This only updates the margins that are set. Unset margins remain their current value.
+     *
+     * @param {Integer} [Left] - The left margin.
+     * @param {Integer} [Top] - The top margin.
+     * @param {Integer} [Right] - The right margin.
+     * @param {Integer} [Bottom] - The bottom margin.
+     */
     SetMargin(Left?, Top?, Right?, Bottom?) {
         rc := this.GetMargin()
         if IsSet(Left) {
@@ -764,29 +823,36 @@ class Xtooltip extends Xtooltip.Base {
             rc.B := Bottom
         }
         SendMessage(TTM_SETMARGIN, 0, rc.Ptr, this.Hwnd)
-        this.Update()
-    }
-    SetMargin2(RectObj) {
-        SendMessage(TTM_SETMARGIN, 0, RectObj.Ptr, this.Hwnd)
-        this.Update()
     }
     /**
+     * Sends {@link https://learn.microsoft.com/en-us/windows/win32/controls/ttm-setmargin TTM_SETMARGIN}.
+     * @param {XttRect|Buffer} RectObj - The {@link XttRect} or similar buffer.
+     */
+    SetMargin2(RectObj) {
+        SendMessage(TTM_SETMARGIN, 0, RectObj.Ptr, this.Hwnd)
+    }
+    /**
+     * Sends {@link https://learn.microsoft.com/en-us/windows/win32/controls/ttm-setmaxtipwidth TTM_SETMAXTIPWIDTH}.
      * @param {Integer} Width - The maximum width for the tooltip's display area. If the text extends
      * beyond this width, the lines will wrap. Set to -1 to allow any width.
      * @returns {Integer} - The previous maximum width.
      */
     SetMaxWidth(Width) {
-        result := SendMessage(TTM_SETMAXTIPWIDTH, 0, Width, this.Hwnd)
-        this.Update()
-        return result
+        return SendMessage(TTM_SETMAXTIPWIDTH, 0, Width, this.Hwnd)
     }
+    /**
+     * Assigns a new name to the object. If the object has already been added to the XttCollection,
+     * deletes that first then adds it again using the new name. This does the same thing if the
+     * object has been added to a theme group.
+     * @param {String} Name - The name.
+     */
     SetName(Name) {
         _name := this.__Name || this.Hwnd
-        if this.XtooltipCollection {
-            if this.XtooltipCollection.Has(_name) {
-                this.XtooltipCollection.Delete(_name)
+        if this.XttCollection {
+            if this.XttCollection.Has(_name) {
+                this.XttCollection.Delete(_name)
             }
-            this.XtooltipCollection.Set(Name, this)
+            this.XttCollection.Set(Name, this)
         }
         if themeGroup := this.ThemeGroup {
             if themeGroup.Has(_name) {
@@ -796,12 +862,28 @@ class Xtooltip extends Xtooltip.Base {
         }
         this.__Name := Name
     }
+    /**
+     * Sends {@link https://learn.microsoft.com/en-us/windows/win32/controls/ttm-settiptextcolor TTM_SETTIPTEXTCOLOR}.
+     * Also see {@link Xtooltip.Prototype.SetTextColorRGB}.
+     * @param {Integer} Color - The COLORREF value.
+     */
     SetTextColor(Color) {
         SendMessage(TTM_SETTIPTEXTCOLOR, Color, 0, this.Hwnd)
     }
+    /**
+     * Sends {@link https://learn.microsoft.com/en-us/windows/win32/controls/ttm-settiptextcolor TTM_SETTIPTEXTCOLOR}.
+     * Also see {@link Xtooltip.Prototype.SetTextColor}.
+     * @param {Integer} R - The 0-255 red value.
+     * @param {Integer} G - The 0-255 green value.
+     * @param {Integer} B - The 0-255 blue value.
+     */
     SetTextColorRGB(R, G, B) {
         SendMessage(TTM_SETTIPTEXTCOLOR, XttRGB(R, G, B), 0, this.Hwnd)
     }
+    /**
+     * Sets a theme.
+     * @param {XttTheme|String} - The theme or the name of the theme in the collection.
+     */
     SetTheme(Theme) {
         if !IsObject(Theme) {
             if this.ThemeCollection {
@@ -813,8 +895,13 @@ class Xtooltip extends Xtooltip.Base {
             }
         }
         Theme.Apply(this)
-        this.Update()
     }
+    /**
+     * Adds the {@link Xtooltip} to a theme group.
+     * @param {XttThemeGroup|String} - The theme group or the name of the theme group in the collection.
+     * @param {Boolean} [ApplyTheme = true] - If true, applies the group's active theme to the
+     * {@link Xtooltip} object.
+     */
     SetThemeGroup(ThemeGroup, ApplyTheme := true) {
         if !IsObject(ThemeGroup) {
             if collection := this.ThemeGroupCollection {
@@ -824,81 +911,66 @@ class Xtooltip extends Xtooltip.Base {
                 throw Error('You must register a theme group collection before being able to reference a group by name.', -1)
             }
         }
-        this.__ThemeGroupName := ThemeGroup.Name
+        this.ThemeGroupName := ThemeGroup.Name
         if ApplyTheme && ThemeGroup.__ActiveTheme {
             ThemeGroup.__ActiveTheme.Apply(this)
         }
-        this.Update()
     }
     /**
-     * @param {Integer} [Icon = 0] - Either a handle to an icon, or one of the following:
+     * Sends {@link https://learn.microsoft.com/en-us/windows/win32/controls/ttm-settitle TTM_SETTITLE}.
+     * @param {Integer} [Icon = 0] - Either a handle to an icon (HICON), or one of the following:
      * - 0 : TTI_NONE
      * - 1 : TTI_INFO
      * - 2 : TTI_WARNING
      * - 3 : TTI_ERROR
-     *
-     * #if (NTDDI_VERSION >= NTDDI_VISTA)
      * - 4 : TTI_INFO_LARGE
      * - 5 : TTI_WARNING_LARGE
      * - 6 : TTI_ERROR_LARGE
      *
      * @param {String} [Title] - The title string. This cannot exceed 99 characters.
      */
-    SetTitle(Icon := 0, Title?) {
-        if IsSet(Title) {
-            bytes := StrPut(Title, XTT_DEFAULT_ENCODING)
-            if bytes > 200 {
-                throw Error('The title length exceeds the maximum (198 bytes).', -1, Title)
-            }
-            buf := Buffer(bytes)
-            StrPut(Title, buf, XTT_DEFAULT_ENCODING)
-            this.TitleSize := StrLen(Title)
-        } else {
-            if this.TitleSize {
-                _ttGetTitle := this.GetTitle()
-                if _ttGetTitle.Chars {
-                    buf := { Ptr: _ttGetTitle.TitlePtr, Size: _ttGetTitle.Chars * 2 + 2 }
-                } else {
-                    buf := Buffer(2, 0)
-                }
-            } else {
-                buf := Buffer(2, 0)
-            }
+    SetTitle(Title, Icon := 0) {
+        bytes := StrPut(Title, XTT_DEFAULT_ENCODING)
+        if bytes > 200 {
+            throw Error('The title length exceeds the maximum (198 bytes).', , Title)
         }
-        result := SendMessage(TTM_SETTITLEW, Icon, buf.Ptr, this.Hwnd)
-        this.Update()
-        return result
+        buf := Buffer(bytes)
+        StrPut(Title, buf, XTT_DEFAULT_ENCODING)
+        this.TitleSize := StrLen(Title) + 1
+        if !SendMessage(TTM_SETTITLEW, Number(Icon), buf.Ptr, this.Hwnd) {
+            throw OSError()
+        }
     }
     /**
      * @description - Sends TTM_SETTOOLINFO to update a tool with new values. Before sending the
-     * message, `Xtooltip.Prototype.SetToolInfo` performs some pre-processing and validation to
+     * message, {@link Xtooltip.Prototype.SetToolInfo} performs some pre-processing and validation to
      * ensure there are no issues. Specifically:
-     * - If you do not set `Key` with a valid key, `Xtooltip.Prototype.SetToolInfo` iterates the
-     * objects in the ToolInfoParams collection to find a matching one. If a matching `ToolInfo.Params`
+     * - If you do not set `Key` with a valid key, {@link Xtooltip.Prototype.SetToolInfo} iterates the
+     * objects in the ToolInfoParams collection to find a matching one. If a matching {@link TtToolInfo.Params}
      * object is not found, an error is thrown.
-     * - If TTF_TRACK is included in `NewToolInfo.Flags`, and if the current `ToolInfo.Params` object
+     * - If TTF_TRACK is included in `NewToolInfo.Flags`, and if the current {@link TtToolInfo.Params} object
      * associated with `NewToolInfo` does not have the flag TTF_TRACK, and if the property
      * "HasTrackingTool" is 1, an error is thrown because only one tracking tool can be active
      * at a time on an Xtooltip.
      * - If TTF_TRACK is included in `NewToolInfo.Flags` and the value of "HasTrackingTool" is 0,
      * the value is set to 1.
      * - If `NewToolInfo.Text` returns text, and if the length of the text is greater than 79 characters,
-     * `Xtooltip.Prototype.SetToolInfo` will proceed with a warning sent to `OutputDebug` explaining
-     * that the maximum characters is 79. If you encounte this, you should use method "UpdateTipText"
+     * {@link Xtooltip.Prototype.SetToolInfo} will proceed with a warning sent to `OutputDebug` explaining
+     * that the maximum characters is 79. If you encounter this, you should use method "UpdateTipText"
      * instead.
      * - If `NewToolInfo.Text` returns text, the value of the property "TextSize" is updated on the
-     * current `ToolInfo.Params` object with the correct number of bytes.
+     * current {@link TtToolInfo.Params} object with the correct number of bytes.
      *
      * If you update the tooltip's text, it must be 79 characters or less. If you need to update
      * the text with a longer string, use TTM_UPDATETIPTEXT instead.
      *
-     * @param {ToolInfo} NewToolInfo - The updated `ToolInfo` object.
-     * @param {String} [Key] - The key associated with the `ToolInfo.Params` object associated with
-     * the tool that is being updated. If you need to add a new tool, use `Xtooltip.Prototype.AddTool`
+     * @param {ToolInfo} NewToolInfo - The updated {@link TtToolInfo} object.
+     * @param {String} [Key] - The "key" associated with the {@link TtToolInfo.Params} object associated with
+     * the tool that is being updated. If you need to add a new tool, use {@link Xtooltip.Prototype.AddTool}
      * or any of the other "Add" methods.
      *
-     * @throws {Error} - Unable to find the `ToolInfo.Params` object associated with the new `ToolInfo`
-     * object. Use `Xtooltip.Prototype.AddTool` instead.
+     * @throws {Error} - Unable to find the {@link TtToolInfo.Params} object associated with the new {@link TtToolInfo}
+     * object. Use {@link Xtooltip.Prototype.AddTool} instead.
      */
     SetToolInfo(NewToolInfo, Key?) {
         if IsSet(Key) {
@@ -906,7 +978,7 @@ class Xtooltip extends Xtooltip.Base {
                 currentTiParams := this.Tools.Get(Key)
             }
         } else {
-            ; find the existing `ToolInfo.Params` object associated with the new `ToolInfo` object.
+            ; find the existing {@link TtToolInfo.Params} object associated with the new `ToolInfo` object.
             hwnd := NewToolInfo.Hwnd
             id := NewToolInfo.Id
             for key, tiParams in this.Tools {
@@ -934,40 +1006,59 @@ class Xtooltip extends Xtooltip.Base {
                 currentTiParams.TextSize := StrPut(NewToolInfo.Text, XTT_DEFAULT_ENCODING)
             }
         } else {
-            throw Error('Unable to find the ``ToolInfo.Params`` object associated with the new'
+            throw Error('Unable to find the `{@link TtToolInfo.Params}` object associated with the new'
             ' ``ToolInfo`` object. Use ``Xtooltip.Prototype.AddTool`` instead.', -1)
         }
         SendMessage(TTM_SETTOOLINFOW, 0, NewToolInfo.Ptr, this.Hwnd)
-        this.Update()
     }
+    /**
+     * Sends {@link https://learn.microsoft.com/en-us/windows/win32/controls/ttm-setwindowtheme TTM_SETWINDOWTHEME}.
+     * @param {String} TooltipVisualStyleName - The tooltip visual style to set.
+     */
     SetWindowTheme(TooltipVisualStyleName) {
         buf := Buffer(StrPut(TooltipVisualStyleName, XTT_DEFAULT_ENCODING))
         StrPut(TooltipVisualStyleName, buf, XTT_DEFAULT_ENCODING)
         SendMessage(TTM_SETWINDOWTHEME, 0, buf.Ptr, this.Hwnd)
-        this.Update()
     }
+    /**
+     * Sends {@link https://learn.microsoft.com/en-us/windows/win32/controls/ttm-trackactivate TTM_TRACKACTIVATE}.
+     * @param {String} Key - The "key" associated with the {@link TtToolInfo.Params} object.
+     * @param {Boolean} Value - `true` to activate, `false` to deactivate.
+     */
     TrackActivate(Key, Value) {
         tiParams := this.Tools.Get(Key)
-        ti := ToolInfo(this.Hwnd, tiParams.Hwnd, tiParams.Id)
+        ti := TtToolInfo(this.Hwnd, tiParams.Hwnd, tiParams.Id)
         SendMessage(TTM_TRACKACTIVATE, Value, ti.Ptr, this.Hwnd)
     }
+    /**
+     * Sends {@link https://learn.microsoft.com/en-us/windows/win32/controls/ttm-trackposition TTM_TRACKPOSITION}.
+     * @param {Integer} X - The x screen coordinate position.
+     * @param {Integer} Y - The y screen coordinate position.
+     */
     TrackPosition(X, Y) {
         SendMessage(TTM_TRACKPOSITION, 0, (Y << 16) | (X & 0xFFFF), this.Hwnd)
     }
+    /**
+     * Sends {@link https://learn.microsoft.com/en-us/windows/win32/controls/ttm-trackposition TTM_TRACKPOSITION}.
+     * @param {Integer} [OffsetX = 0] - A number of pixels to add to the x coordinate.
+     * @param {Integer} [OffsetY = 0] - A number of pixels to add to the y coordinate.
+     */
     TrackPositionByMouse(OffsetX := 0, OffsetY := 0) {
         pt := Buffer(8)
         DllCall('GetCursorPos', 'ptr', pt, 'int')
         SendMessage(TTM_TRACKPOSITION, 0, ((NumGet(pt, 4, 'int') + OffsetY) << 16) | ((NumGet(pt, 0, 'int') + OffsetX) & 0xFFFF), this.Hwnd)
-        this.Update()
     }
+    /**
+     * Sends {@link https://learn.microsoft.com/en-us/windows/win32/controls/ttm-update TTM_UPDATE}.
+     */
     Update() {
         return SendMessage(TTM_UPDATE, 0, 0, this.Hwnd)
     }
     /**
-     * @description - Sets the `lpszText` member then sends TTM_UPDATETIPTEXTW.
+     * Sends {@link https://learn.microsoft.com/en-us/windows/win32/controls/ttm-updatetiptext TTM_UPDATETIPTEXT}.
      *
-     * @param {String|Buffer} [Value] - The text to display on the tooltip, or a buffer containing
-     * the text.
+     * @param {String} Str - The text to display on the tooltip.
+     * @param {String} Key - The "key" associated with the {@link TtToolInfo.Params} object.
      */
     UpdateTipText(Str, Key) {
         TiParams := this.Tools.Get(Key)
@@ -983,7 +1074,7 @@ class Xtooltip extends Xtooltip.Base {
             buf := Buffer(StrPut(Text, XTT_DEFAULT_ENCODING))
             StrPut(Text, buf, XTT_DEFAULT_ENCODING)
         }
-        ObjSetBase(TiParams, ToolInfo.Params.Prototype)
+        ObjSetBase(TiParams, TtToolInfo.Params.Prototype)
         TiParams.TextSize := buf.Size
         this.Tools.Set(Key, TiParams)
         ti := TiParams(this)
@@ -1024,12 +1115,12 @@ class Xtooltip extends Xtooltip.Base {
         Set => this.SetTheme(Value)
     }
     ThemeGroup {
-        Get => this.ThemeGroupCollection && this.ThemeGroupCollection.Has(this.__ThemeGroupName) ? this.ThemeGroupCollection.Get(this.__ThemeGroupName) : ''
+        Get => this.ThemeGroupCollection && this.ThemeGroupCollection.Has(this.ThemeGroupName) ? this.ThemeGroupCollection.Get(this.ThemeGroupName) : ''
         Set => this.SetThemeGroup(Value)
     }
     Title {
-        Get => this.TtGetTitle.Call(this.TitleSize)
-        Set => this.SetTitle(, Value)
+        Get => this.TitleSize ? this.TtGetTitle.Call(this.TitleSize) : ''
+        Set => this.SetTitle(Value)
     }
     Visible {
         Get => DllCall('IsWindowVisible', 'Ptr', this.Hwnd, 'int')
@@ -1042,599 +1133,626 @@ class Xtooltip extends Xtooltip.Base {
         }
     }
 
-    class Theme extends Xtooltip.Base {
-        static __New() {
-            this.DeleteProp('__New')
-            this.ListFont := [
-                'CharSet', 'ClipPrecision', 'Escapement', 'Family'
-              , 'Italic', 'FaceName', 'OutPrecision', 'Pitch', 'Height'
-              , 'Quality', 'FontSize', 'Strikeout', 'Underline', 'Weight'
-            ]
-            this.ListGeneral := ['BackColor', 'MaxWidth', 'TextColor']
-            this.ListMargin := ['MarginL', 'MarginT', 'MarginR', 'MarginB']
-            this.ListTitle := ['Icon', 'Title']
-            Proto := this.Prototype
-            Proto.Default := Proto.__Name := ''
+    class Options {
+        static Default := {
+            AlwaysOnTop: true
+          , BackColor: ''
+          , Escapement: 0
+          , ExStyle: 0
+          , FaceName: ''
+          , FontSize: ''
+          , H: 0
+          , HwndParent: A_ScriptHwnd
+          , Icon: 0
+          , Instance: 0
+          , Italic: 0
+          , MarginB: ''
+          , MarginL: ''
+          , MarginR: ''
+          , Margins: ''
+          , MarginT: ''
+          , MaxWidth: ''
+          , Menu: 0
+          , Name: ''
+          , Param: 0
+          , Quality: 5
+          , Strikeout: 0
+          , Style: 0
+          , TextColor: ''
+          , Theme: 0
+          , ThemeGroup: ''
+          , Title: ''
+          , Underline: 0
+          , W: 0
+          , Weight: 400
+          , WindowName: 0
+          , X: 0
+          , Y: 0
         }
-        static __Enum(VarCount) {
-            i := n := 0
-            k := 1
-            list := [this.ListFont, this.ListGeneral, this.ListMargin, this.ListTitle]
-            if VarCount == 1 {
-                return enum1
+        static Call(Options?) {
+            if IsSet(Options) {
+                o := {}
+                d := this.Default
+                for prop in d.OwnProps() {
+                    o.%prop% := HasProp(Options, prop) ? Options.%prop% : d.%prop%
+                }
+                return o
             } else {
-                return enum2
+                return this.Default.Clone()
             }
-
-            enum1(&item) {
-                if ++i > list[k].Length {
-                    if ++k > list.Length {
-                        return 0
-                    }
-                    i := 1
-                }
-                item := list[k][i]
-                return 1
-            }
-            enum2(&index, &item) {
-                ++n
-                if ++i > list[k].Length {
-                    if ++k > list.Length {
-                        return 0
-                    }
-                    i := 1
-                }
-                index := n
-                item := list[k][i]
-                return 1
-            }
-        }
-        static DeregisterDefault() {
-            this.Prototype.Default := ''
-        }
-        static RegisterDefault(DefaultOptions) {
-            this.Prototype.Default := DefaultOptions
-        }
-        static GetOptionCategory(OptionName) {
-            if RegExMatcH(OptionName, 'i)^Margin[ltrb]$') {
-                return 'Margin'
-            }
-            OptionName := ',' OptionName ','
-            if InStr(',Icon,Title,', OptionName) {
-                return 'Title'
-            }
-            if InStr(',BackColor,MaxWidth,TextColor,', OptionName) {
-                return 'General'
-            }
-            if InStr(',CharSet,ClipPrecision,Escapement,Family,Italic,FaceName,Orientation'
-            ',OutPrecision,Pitch,Quality,FontSize,Strikeout,Underline,Weight,', ',' OptionName ',') {
-                return 'Font'
-            }
-            throw ValueError('The option name is invalid.', -1, Trim(OptionName, ','))
-        }
-        __New(Options?) {
-            this.SetOptions(Options ?? {})
-            if this.ThemeCollection && this.HasOwnProp('__Name') {
-                this.ThemeCollection.Set(this.__Name, this)
-            }
-        }
-        /**
-         * @param {Xtooltip} XttObj - The `Xtooltip` object.
-         * @param {Boolean} [UpdateThemeProperty = false] - If true, the property "Theme" on
-         * `XttObj` will be updated to this `Xtooltip.Theme` object.
-         */
-        Apply(XttObj) {
-            this.ApplyFont(XttObj)
-            this.ApplyGeneral(XttObj)
-            this.ApplyMargin(XttObj)
-            this.ApplyTitle(XttObj)
-            XttObj.__Theme := this
-        }
-        /**
-         * @param {Xtooltip} XttObj - The `Xtooltip` object.
-         * @param {Boolean} [UpdateThemeProperty = false] - If true, the property "Theme" on
-         * `XttObj` will be updated to this `Xtooltip.Theme` object.
-         */
-        ApplyFont(XttObj) {
-            lf := XttObj.Font
-            for prop in Xtooltip.Theme.ListFont {
-                if HasProp(this, prop) {
-                    lf.%prop% := this.%prop%
-                }
-            }
-            lf.Apply()
-        }
-        /**
-         * @param {Xtooltip} XttObj - The `Xtooltip` object.
-         * @param {Boolean} [UpdateThemeProperty = false] - If true, the property "Theme" on
-         * `XttObj` will be updated to this `Xtooltip.Theme` object.
-         */
-        ApplyGeneral(XttObj) {
-            for prop in Xtooltip.Theme.ListGeneral {
-                if HasProp(this, prop) {
-                    XttObj.%prop% := this.%prop%
-                }
-            }
-        }
-        /**
-         * @param {Xtooltip} XttObj - The `Xtooltip` object.
-         * @param {Boolean} [UpdateThemeProperty = false] - If true, the property "Theme" on
-         * `XttObj` will be updated to this `Xtooltip.Theme` object.
-         */
-        ApplyMargin(XttObj) {
-            XttObj.SetMargin(
-                HasProp(this, 'MarginL') ? this.MarginL : unset
-              , HasProp(this, 'MarginT') ? this.MarginT : unset
-              , HasProp(this, 'MarginR') ? this.MarginR : unset
-              , HasProp(this, 'MarginB') ? this.MarginB : unset
-            )
-        }
-        /**
-         * @param {Xtooltip} XttObj - The `Xtooltip` object.
-         * @param {Boolean} [Font = false] - If true, `Xtooltip.Theme.Prototype.ApplyFont` will be called.
-         * @param {Boolean} [General = false] - If true, `Xtooltip.Theme.Prototype.ApplyGeneral` will be called.
-         * @param {Boolean} [Margin = false] - If true, `Xtooltip.Theme.Prototype.ApplyMargin` will be called.
-         * @param {Boolean} [Title = false] - If true, `Xtooltip.Theme.Prototype.ApplyTitle` will be called.
-         * @param {Boolean} [UpdateThemeProperty = false] - If true, the property "Theme" on
-         * `XttObj` will be updated to this `Xtooltip.Theme` object.
-         */
-        ApplySelect(XttObj, Font := false, General := false, Margin := false, Title := false) {
-            if Font {
-                this.ApplyFont(XttObj)
-            }
-            if General {
-                this.ApplyGeneral(XttObj)
-            }
-            if Margin {
-                this.ApplyMargin(XttObj)
-            }
-            if Title {
-                this.ApplyTitle(XttObj)
-            }
-        }
-        /**
-         * @param {Xtooltip} XttObj - The `Xtooltip` object.
-         * @param {Boolean} [UpdateThemeProperty = false] - If true, the property "Theme" on
-         * `XttObj` will be updated to this `Xtooltip.Theme` object.
-         */
-        ApplyTitle(XttObj) {
-            XttObj.SetTitle(
-                HasProp(this, 'Icon') ? this.Icon : unset
-              , HasProp(this, 'Title') ? this.Title : unset
-            )
-        }
-        DisownChildren(CopyInheritedProperties := false) {
-            for child in this.__Children {
-                child.DisownParent(CopyInheritedProperties)
-            }
-        }
-        DisownParent(CopyInheritedProperties := false) {
-            if CopyInheritedProperties {
-                parent := this.__Parent
-                for prop in Xtooltip.Theme {
-                    if HasProp(parent, prop) {
-                        this.DefineProp(prop, { Value: parent.%prop% })
-                    }
-                }
-            }
-            ObjSetBase(this, Xtooltip.Theme.Prototype)
-            this.DeleteProp('__Parent')
-        }
-        MakeChildTheme(ChildOptions) {
-            if !this.HasOwnProp('__Children') {
-                this.__Children := XttChildThemeCollection()
-            }
-            this.DefineProp('MakeChildTheme', { Call: _MakeChildTheme })
-            _MakeChildTheme.DefineProp('Name', { Value: A_ThisFunc })
-
-            return this.MakeChildTheme(ChildOptions)
-
-            _MakeChildTheme(Self, ChildOptions) {
-                if !HasProp(ChildOptions, 'Name') {
-                    ; If you get this error, call `ThemeObj.SetName("SomeName")`.
-                    XttErrors.ThrowChildThemeNoName()
-                }
-                Child := {}
-                ObjSetBase(Child, this)
-                Child.SetOptions(ChildOptions)
-                this.__Children.Set(Child.Name, Child)
-                if this.ThemeCollection {
-                    this.ThemeCollection.Set(Child.__Name, Child)
-                }
-                return Child
-            }
-        }
-        SetName(ThemeName) {
-            if this.ThemeCollection {
-                if this.ThemeCollection.Has(this.__Name) {
-                    this.ThemeCollection.Delete(this.__Name)
-                }
-                this.ThemeCollection.Set(ThemeName, this)
-            }
-            if parent := this.Parent {
-                if parent.__Children.Has(this.__Name) {
-                    parent.__Children.Delete(this.__Name)
-                }
-                parent.__Children.Set(ThemeName, this)
-            }
-            this.__Name := ThemeName
-        }
-        SetOptions(Options) {
-            if this.Default {
-                default := this.Default
-                for prop in Xtooltip.Theme {
-                    if HasProp(Options, prop) {
-                        this.%prop% := Options.%prop%
-                    } else if HasProp(default, prop) {
-                        this.%prop% := default.%prop%
-                    }
-                }
-            } else {
-                for prop in Xtooltip.Theme {
-                    if HasProp(Options, prop) {
-                        this.%prop% := Options.%prop%
-                    }
-                }
-            }
-            if HasProp(Options, 'Name') {
-                this.SetName(Options.Name)
-            }
-        }
-        SetParent(ParentTheme) {
-            if !this.HasOwnProp('__Name') {
-                throw Error('A theme must have a name to be made a child theme.', -1)
-            }
-            if !IsObject(ParentTheme) {
-                ParentTheme := this.ThemeCollection.Get(ParentTheme)
-            }
-            if this.HasOwnProp('__Parent') {
-                this.__Parent.__Children.Delete(this.__Name)
-            }
-            this.__Parent := ParentTheme
-            if !ParentTheme.HasOwnProp('__Children') {
-                ParentTheme.__Children := XttChildThemeCollection()
-            }
-            ParentTheme.__Children.Set(this.Name, this)
-        }
-
-        Children {
-            Get => this.HasOwnProp('__Children') ? this.__Children : ''
-            Set {
-                if this.HasOwnProp('__Children') {
-                    if Value {
-                        throw Error('The theme already has an ``XttChildThemeCollection``.', -1)
-                    } else {
-                        this.DisownChildren()
-                    }
-                } else {
-                    if Value {
-                        if Value is XttChildThemeCollection {
-                            this.__Children := Value
-                        } else {
-                            this.__Children := XttChildThemeCollection()
-                        }
-                    } else {
-                        throw Error('The theme does not have an ``XttChildThemeCollection``.', -1)
-                    }
-                }
-            }
-        }
-        Name {
-            Get => this.HasOwnProp('__Name') ? this.__Name : ''
-            Set => this.SetName(Value)
-        }
-        Parent {
-            Get => this.HasOwnProp('__Parent') ? this.__Parent : ''
-            Set => this.SetParent(Value)
         }
     }
 
-    class ThemeGroup extends Xtooltip.Base {
-        __New(GroupName) {
-            this.__ActiveTheme := ''
-            this.Themes := XttThemeCollection()
-            this.Xtooltips := XtooltipCollection()
-            this.__Name := GroupName
-            if this.ThemeGroupCollection {
-                this.ThemeGroupCollection.Set(GroupName, this)
+    class Base {
+        ThemeCollection => Xtooltip.ThemeCollection
+        ThemeGroupCollection => Xtooltip.ThemeGroupCollection
+        XttCollection => Xtooltip.XttCollection
+    }
+}
+
+class XttTheme extends Xtooltip.Base {
+    static __New() {
+        this.DeleteProp('__New')
+        this.ListFont := [
+            'CharSet', 'ClipPrecision', 'Escapement', 'Family'
+          , 'Italic', 'FaceName', 'OutPrecision', 'Pitch', 'Height'
+          , 'Quality', 'FontSize', 'Strikeout', 'Underline', 'Weight'
+        ]
+        this.ListGeneral := [ 'BackColor', 'MaxWidth', 'TextColor' ]
+        this.ListMargin := [ 'L', 'T', 'R', 'B' ]
+        this.ListTitle := [ 'Icon', 'Title' ]
+        proto := this.Prototype
+        proto.__Name := proto.__Margin := proto.__Font := ''
+        proto.Default := this()
+        for list in [ this.ListGeneral, this.ListTitle ] {
+            for prop in list {
+                proto.__%prop% := ''
             }
         }
-        Apply(Theme?) {
-            if IsSet(Theme) {
-                if !IsObject(Theme) {
-                    Theme := this.Themes.Get(Theme)
+    }
+    static __Enum(VarCount) {
+        i := n := 0
+        k := 1
+        list := [this.ListFont, this.ListGeneral, this.ListMargin, this.ListTitle]
+        if VarCount == 1 {
+            return enum1
+        } else {
+            return enum2
+        }
+
+        enum1(&item) {
+            if ++i > list[k].Length {
+                if ++k > list.Length {
+                    return 0
                 }
-            } else {
-                Theme := this.__ActiveTheme
+                i := 1
             }
-            for key, xtt in this.Xtooltips {
-                _lf := xtt.Font.Clone()
-                for prop in Xtooltip.Theme.ListFont {
-                    if HasProp(Theme, prop) {
-                        _lf.%prop% := Theme.%prop%
+            item := list[k][i]
+            return 1
+        }
+        enum2(&index, &item) {
+            ++n
+            if ++i > list[k].Length {
+                if ++k > list.Length {
+                    return 0
+                }
+                i := 1
+            }
+            index := n
+            item := list[k][i]
+            return 1
+        }
+    }
+    static DeregisterDefault() {
+        this.Prototype.Default := ''
+    }
+    static GetOptionCategory(OptionName) {
+        if RegExMatcH(OptionName, 'i)^Margin[ltrb]$') {
+            return 'Margin'
+        }
+        OptionName := ',' OptionName ','
+        if InStr(',Icon,Title,', OptionName) {
+            return 'Title'
+        }
+        if InStr(',BackColor,MaxWidth,TextColor,', OptionName) {
+            return 'General'
+        }
+        if InStr(',CharSet,ClipPrecision,Escapement,Family,Italic,FaceName,Orientation'
+        ',OutPrecision,Pitch,Quality,FontSize,Strikeout,Underline,Weight,', ',' OptionName ',') {
+            return 'Font'
+        }
+        throw ValueError('The option name is invalid.', -1, Trim(OptionName, ','))
+    }
+    static RegisterDefault(DefaultOptions) {
+        this.Prototype.Default := DefaultOptions
+    }
+    /**
+     * @param {String} [ThemeName] - If set, the name to associate with the theme. The name is used
+     * when retrieving the theme from {@link Xtooltip#ThemeCollection},
+     * {@link XttTheme#ThemeCollection}, or {@link XttThemeGroup#ThemeCollection}.
+     * It is also used when retrieving the theme from a theme group. If unset, the theme cannot be
+     * added to any collections until {@link XttTheme.Prototype.SetName} is called.
+     *
+     * @param {Object} [Options] - An object with options as property : value pairs. The following
+     * are the available options. If a theme is not set with an option, when the theme is applied
+     * to an {@link Xtooltip} object, that option is no changed; the current value on the object
+     * is maintained.
+     *  - BackColor
+     *  - Font : `Options.Font` can be an {@link XttLogfont} object, or include any of the following
+     *    properties on `Options`. If none of the font options are included, the theme will not include
+     *    a font object; whenever the theme is applied, the {@link Xtooltip} object's current font
+     *    will be maintained.
+     *    - Bold
+     *    - Escapement
+     *    - FaceName
+     *    - FontSize
+     *    - Italic
+     *    - Quality
+     *    - Strikeout
+     *    - Underline
+     *    - Weight
+     *  - Icon
+     *  - Margin : `Options.Margin` can be an {@link XttRect} object, a Buffer object, or include
+     *    any of the following properties on `Options`. If none of the margin options are included,
+     *    the theme will not include a margin object; whenever the theme is applied,
+     *    the {@link Xtooltip} object's current margins will be maintained.
+     *    - MarginL
+     *    - MarginT
+     *    - MarginR
+     *    - MarginB
+     *  - MaxWidth
+     *  - Name : The theme name can also be applied by including the property `Options.Name`.
+     *  - TextColor
+     *  - Title
+     */
+    __New(ThemeName?, Options?) {
+        if IsSet(ThemeName) {
+            this.SetName(ThemeName)
+        }
+        if IsSet(Options) {
+            this.SetOptions(Options)
+        }
+        if this.ThemeCollection && this.__Name {
+            this.ThemeCollection.Set(this.__Name, this)
+        }
+    }
+    /**
+     * Applies all of the theme options and sets the {@link XttTheme} object to property
+     * {@link Xtooltip#Theme}.
+     * @param {Xtooltip} Xtt - The {@link Xtooltip} object.
+     */
+    Apply(Xtt) {
+        if this.Font {
+            this.ApplyFont(Xtt)
+        }
+        this.ApplyGeneral(Xtt)
+        if this.Margin {
+            this.ApplyMargin(Xtt)
+        }
+        if this.Title || this.Icon {
+            this.ApplyTitle(Xtt)
+        }
+        Xtt.__Theme := this
+    }
+    /**
+     * @param {Xtooltip} Xtt - The {@link Xtooltip} object.
+     */
+    ApplyFont(Xtt) {
+        this.Font.Clone(Xtt.Font, , false)
+        Xtt.Font.Apply()
+    }
+    /**
+     * @param {Xtooltip} Xtt - The {@link Xtooltip} object.
+     */
+    ApplyGeneral(Xtt) {
+        for prop in XttTheme.ListGeneral {
+            if StrLen(this.__%prop%) {
+                Xtt.%prop% := this.%prop%
+            }
+        }
+    }
+    /**
+     * @param {Xtooltip} Xtt - The {@link Xtooltip} object.
+     */
+    ApplyMargin(Xtt) {
+        Xtt.SetMargin2(this.Margin)
+    }
+    /**
+     * @param {Xtooltip} Xtt - The {@link Xtooltip} object.
+     * @param {Boolean} [Font = false] - If true, {@link XttTheme.Prototype.ApplyFont} will be called.
+     * @param {Boolean} [General = false] - If true, {@link XttTheme.Prototype.ApplyGeneral} will be called.
+     * @param {Boolean} [Margin = false] - If true, {@link XttTheme.Prototype.ApplyMargin} will be called.
+     * @param {Boolean} [Title = false] - If true, {@link XttTheme.Prototype.ApplyTitle} will be called.
+     */
+    ApplySelect(Xtt, Font := false, General := false, Margin := false, Title := false) {
+        if Font && this.Font {
+            this.ApplyFont(Xtt)
+        }
+        if General {
+            this.ApplyGeneral(Xtt)
+        }
+        if Margin && this.Margin {
+            this.ApplyMargin(Xtt)
+        }
+        if Title && (this.Title || this.Icon) {
+            this.ApplyTitle(Xtt)
+        }
+    }
+    /**
+     * @param {Xtooltip} Xtt - The {@link Xtooltip} object.
+     */
+    ApplyTitle(Xtt) {
+        Xtt.SetTitle(this.Title || unset, IsNumber(this.Icon) ? this.Icon : unset)
+    }
+    /**
+     * Sets an {@link XttLogfont} object to property {@link XttTheme#Font}.
+     * @param {Object|XttLogfont} Options - An object with options as property : value pairs,
+     * or an {@link XttLogfont} object.
+     */
+    SetFont(Options) {
+        if Options is XttLogfont {
+            this.__Font := Options
+        } else if HasProp(Options, 'Font') {
+            if Options.Font is XttLogfont {
+                this.__Font := Options.Font
+            } else {
+                throw TypeError('``Options.Font`` must be an ``XttLogfont`` object.')
+            }
+        } else {
+            lf := XttLogfont()
+            if this.Default && this.Default.Font {
+                default := this.Default.Font
+                for prop in XttTheme.ListFont {
+                    if HasProp(Options, prop) {
+                        lf.%prop% := Options.%prop%
+                    } else {
+                        lf.%prop% := default.%prop%
                     }
                 }
-                break
-            }
-            if HasProp(Theme, 'Title') {
-                flag_title := 1
-                bytes := StrPut(Theme.Title, XTT_DEFAULT_ENCODING)
-                if bytes > 200 {
-                    throw Error('The title length exceeds the maximum (198 bytes).', -1, Theme.Title)
+                flag := true
+            } else {
+                for prop in XttTheme.ListFont {
+                    if HasProp(Options, prop) {
+                        lf.%prop% := Options.%prop%
+                        flag := true
+                    }
                 }
-                title := Buffer(bytes)
-                StrPut(Theme.Title, title, XTT_DEFAULT_ENCODING)
-                if HasProp(Theme, 'Icon') {
-                    icon := Theme.Icon
+            }
+            if IsSet(flag) {
+                this.__Font := lf
+            }
+        }
+    }
+    /**
+     * Sets {@link XttTheme#BackColor}, {@link XttTheme#MaxWidth} and {@link XttTheme#TextColor}.
+     * @param {Object} Options - An object with options as property : value pairs.
+     */
+    SetGeneral(Options) {
+        for prop in XttTheme.ListGeneral {
+            if HasProp(Options, prop) {
+                this.__%prop% := Options.%prop%
+            }
+        }
+    }
+    /**
+     * Sets an {@link XttRect} object to property {@link XttTheme#Margin}.
+     * @param {Object|XttRect} Options - An object with options as property : value pairs, or
+     * an {@link XttRect} object.
+     */
+    SetMargin(Options) {
+        if Options is XttRect {
+            this.__Margin := Options
+        } else if HasProp(Options, 'Margin') {
+            if Options.Margin is XttRect || Options.Margin is Buffer {
+                this.__Margin := Options.Margin
+            } else {
+                throw TypeError('``Options.Margin`` must be an ``XttRect`` or ``Buffer`` object.')
+            }
+        } else {
+            rc := XttRect()
+            if HasProp(Options, 'Margins') {
+                margins := Options.Margins
+                flag := true
+            } else {
+                margins := 0
+            }
+            for char in XttTheme.ListMargin {
+                if HasProp(Options, 'Margin' char) {
+                    rc.%char% := Options.Margin%char%
+                    flag := true
                 } else {
-                    icon := 0
-                }
-            } else if HasProp(Theme, 'Icon') {
-                flag_title := 1
-                icon := Theme.Icon
-                title := Buffer(2, 0)
-            } else {
-                flag_title := 0
-            }
-            margins := []
-            margins.Length := 4
-            flag_margins := 0
-            for char in ['L', 'T', 'R', 'B'] {
-                if HasProp(Theme, 'Margins' char) {
-                    margins[A_Index] := Theme.Margins%char%
-                    flag_margins := 1
+                    rc.%char% := margins
                 }
             }
-            list := Map()
-            for prop in Xtooltip.Theme.ListGeneral {
-                if HasProp(Theme, prop) {
-                    list.Set(prop, Theme.%prop%)
-                }
-            }
-            flag_general := list.Count
-            for hwnd, xtt in this.Xtooltips {
-                _lf.Clone(xtt.Font.Buffer, , false)
-                xtt.Font.Apply()
-                if flag_title {
-                    SendMessage(TTM_SETTITLEW, icon, title.Ptr, hwnd)
-                }
-                if flag_margins {
-                    xtt.SetMargin(margins*)
-                }
-                if flag_general {
-                    for prop, val in list {
-                        xtt.%prop% := val
-                    }
-                }
-                xtt.__Theme := Theme
+            if IsSet(flag) {
+                this.__Margin := rc
             }
         }
-        ApplyFont(Theme?) {
-            if IsSet(Theme) {
-                if !IsObject(Theme) {
-                    Theme := this.Themes.Get(Theme)
+    }
+    /**
+     * Sets property {@link XttTheme#Name}.
+     * @param {String} ThemeName - The name.
+     */
+    SetName(ThemeName) {
+        if this.ThemeCollection {
+            if this.__Name {
+                if this.ThemeCollection.Has(this.__Name) {
+                    this.ThemeCollection.Delete(this.__Name)
                 }
-            } else {
-                Theme := this.__ActiveTheme
             }
-            for hwnd, xtt in this.Xtooltips {
-                _lf := xtt.Font.Clone()
-                for prop in Xtooltip.Theme.ListFont {
-                    if HasProp(Theme, prop) {
-                        _lf.%prop% := Theme.%prop%
-                    }
-                }
-                break
-            }
-            for key, xtt in this.Xtooltips {
-                _lf.Clone(xtt.Font.Buffer, , false)
-                xtt.Font.Apply()
-            }
+            this.ThemeCollection.Set(ThemeName, this)
         }
-        ApplyGeneral(Theme?) {
-            if IsSet(Theme) {
-                if !IsObject(Theme) {
-                    Theme := this.Themes.Get(Theme)
-                }
-            } else {
-                Theme := this.__ActiveTheme
-            }
-            xtooltips := this.Xtooltips
-            for prop in Xtooltip.Theme.ListGeneral {
-                if HasProp(Theme, prop) {
-                    val := Theme.%prop%
-                    for hwnd, xtt in xtooltips {
-                        xtt.%prop% := val
-                    }
+        this.__Name := ThemeName
+    }
+    /**
+     * Updates the theme with new options. This only changes values that are present on the input
+     * `Options` object. If an option is absent from `Options`, that option does not get deleted
+     * from the theme.
+     * @param {Object} Options - An object with options as property : value pairs.
+     */
+    SetOptions(Options) {
+        this.SetFont(Options)
+        this.SetMargin(Options)
+        if HasProp(Options, 'Name') {
+            this.SetName(Options.Name)
+        }
+        for list in [ XttTheme.ListTitle, XttTheme.ListGeneral ] {
+            for prop in list {
+                if HasProp(Options, prop) {
+                    this.__%prop% := Options.%prop%
                 }
             }
         }
-        ApplyMargin(Theme?) {
-            if IsSet(Theme) {
-                if !IsObject(Theme) {
-                    Theme := this.Themes.Get(Theme)
-                }
-            } else {
-                Theme := this.__ActiveTheme
-            }
-            margins := []
-            margins.Length := 4
-            flag_margins := 0
-            for char in ['L', 'T', 'R', 'B'] {
-                if HasProp(Theme, 'Margins' char) {
-                    margins[A_Index] := Theme.Margins%char%
-                }
-            }
-            for hwnd, xtt in this.Xtooltips {
-                xtt.SetMargin(margins*)
+    }
+    /**
+     * Sets {@link XttTheme#Title} and {@link XttTheme#Icon}.
+     * @param {Object} Options - An object with options as property : value pairs.
+     */
+    SetTitle(Options) {
+        for prop in XttTheme.ListTitle {
+            if HasProp(Options, prop) {
+                this.__%prop% := Options.%prop%
             }
         }
-        ApplySelection(Theme?, Font := false, General := false, Margin := false, Title := false) {
-            if IsSet(Theme) {
-                if !IsObject(Theme) {
-                    Theme := this.Themes.Get(Theme)
-                }
-            } else {
-                Theme := this.__ActiveTheme
-            }
-            if Font {
-                this.ApplyFont(Theme)
-            }
-            if General {
-                this.ApplyGeneral(Theme)
-            }
-            if Margin {
-                this.ApplyMargin(Theme)
-            }
-            if Title {
-                this.ApplyTitle(Theme)
-            }
+    }
+
+    BackColor {
+        Get => StrLen(this.__BackColor) ? this.__BackColor : this.Default.__BackColor
+        Set => this.__BackColor := Value
+    }
+    Font {
+        Get => this.__Font ? this.__Font : this.Default.__Font
+        Set => this.__Font := Value
+    }
+    Icon {
+        Get => StrLen(this.__Icon) ? this.__Icon : this.Default.__Icon
+        Set => this.__Icon := Value
+    }
+    Margin {
+        Get => this.__Margin ? this.__Margin : this.Default.__Margin
+        Set => this.__Margin := Value
+    }
+    MaxWidth {
+        Get => StrLen(this.__MaxWidth) ? this.__MaxWidth : this.Default.__MaxWidth
+        Set => this.__MaxWidth := Value
+    }
+    Name {
+        Get => this.__Name
+        Set => this.SetName(Value)
+    }
+    TextColor {
+        Get => StrLen(this.__TextColor) ? this.__TextColor : this.Default.__TextColor
+        Set => this.__TextColor := Value
+    }
+    Title {
+        Get => StrLen(this.__Title) ? this.__Title : this.Default.__Title
+        Set => this.__Title := Value
+    }
+}
+
+class XttThemeGroup extends Xtooltip.Base {
+    /**
+     * @param {String} GroupName
+     */
+    __New(GroupName) {
+        this.__ActiveTheme := ''
+        this.Themes := XttThemeCollection()
+        this.Xtooltips := XttCollection()
+        this.__Name := GroupName
+        if this.ThemeGroupCollection {
+            this.ThemeGroupCollection.Set(GroupName, this)
         }
-        ApplyTitle(Theme?) {
-            if IsSet(Theme) {
-                if !IsObject(Theme) {
-                    Theme := this.Themes.Get(Theme)
-                }
-            } else {
-                Theme := this.__ActiveTheme
+    }
+    Apply(Theme?) {
+        if IsSet(Theme) {
+            if !IsObject(Theme) {
+                Theme := this.Themes.Get(Theme)
             }
-            icon := HasProp(Theme, 'Icon') ? Theme.Icon : 0
-            if HasProp(Theme, 'Title') {
-                flag_title := 1
-                bytes := StrPut(Theme.Title, XTT_DEFAULT_ENCODING)
-                if bytes > 200 {
-                    throw Error('The title length exceeds the maximum (198 bytes).', -1, Theme.Title)
-                }
-                title := Buffer(bytes)
-                StrPut(Theme.Title, title, XTT_DEFAULT_ENCODING)
-                if HasProp(Theme, 'Icon') {
-                    icon := Theme.Icon
-                } else {
-                    icon := 0
-                }
-            } else {
-                title := Buffer(2, 0)
-            }
-            for hwnd in this.Xtooltips {
-                SendMessage(TTM_SETTITLEW, icon, title.Ptr, hwnd)
-            }
+        } else {
+            Theme := this.__ActiveTheme
         }
-        GetActiveTheme() {
-            return this.__ActiveTheme
+        for hwnd, xtt in this.Xtooltips {
+            Theme.Apply(xtt)
         }
-        SetName(GroupName) {
-            for hwnd, xtt in this.Xtooltips {
-                xtt.__ThemeGroupName := this.__Name
+    }
+    ApplyFont(Theme?) {
+        if IsSet(Theme) {
+            if !IsObject(Theme) {
+                Theme := this.Themes.Get(Theme)
             }
-            if collection := this.ThemeGroupCollection {
-                if collection.Has(this.__Name) {
-                    collection.Delete(this.__Name)
-                }
-                collection.Set(GroupName, this)
-            }
-            this.__Name := GroupName
+        } else {
+            Theme := this.__ActiveTheme
         }
-        ThemeActivate(Theme) {
-            if IsObject(Theme) {
-                if !Theme.HasOwnProp('__Name') {
-                    ; If you get this error, call `ThemeObj.SetName("SomeName")`.
-                    XttErrors.ThrowThemeGroupNoThemeName()
-                }
+        for key, xtt in this.Xtooltips {
+            Theme.ApplyFont(xtt)
+        }
+    }
+    ApplyGeneral(Theme?) {
+        if IsSet(Theme) {
+            if !IsObject(Theme) {
+                Theme := this.Themes.Get(Theme)
+            }
+        } else {
+            Theme := this.__ActiveTheme
+        }
+        for key, xtt in this.Xtooltips {
+            Theme.ApplyGeneral(xtt)
+        }
+    }
+    ApplyMargin(Theme?) {
+        if IsSet(Theme) {
+            if !IsObject(Theme) {
+                Theme := this.Themes.Get(Theme)
+            }
+        } else {
+            Theme := this.__ActiveTheme
+        }
+        for key, xtt in this.Xtooltips {
+            Theme.ApplyMargin(xtt)
+        }
+    }
+    ApplySelection(Theme?, Font := false, General := false, Margin := false, Title := false) {
+        if IsSet(Theme) {
+            if !IsObject(Theme) {
+                Theme := this.Themes.Get(Theme)
+            }
+        } else {
+            Theme := this.__ActiveTheme
+        }
+        if Font {
+            this.ApplyFont(Theme)
+        }
+        if General {
+            this.ApplyGeneral(Theme)
+        }
+        if Margin {
+            this.ApplyMargin(Theme)
+        }
+        if Title {
+            this.ApplyTitle(Theme)
+        }
+    }
+    ApplyTitle(Theme?) {
+        if IsSet(Theme) {
+            if !IsObject(Theme) {
+                Theme := this.Themes.Get(Theme)
+            }
+        } else {
+            Theme := this.__ActiveTheme
+        }
+        for key, xtt in this.Xtooltips {
+            Theme.ApplyTitle(xtt)
+        }
+    }
+    GetActiveTheme() {
+        return this.__ActiveTheme
+    }
+    SetActiveTheme(Theme) {
+        if IsObject(Theme) {
+            if !Theme.__Name {
+                ; If you get this error, call `ThemeObj.SetName("SomeName")`.
+                XttErrors.ThrowThemeGroupNoThemeName()
+            }
+            this.Themes.Set(Theme.__Name, Theme)
+        } else {
+            if this.Themes.Has(Theme) {
+                Theme := this.Themes.Get(Theme)
+            } else if this.ThemeCollection && this.ThemeCollection.Has(Theme) {
+                Theme := this.ThemeCollection.Get(Theme)
                 this.Themes.Set(Theme.__Name, Theme)
             } else {
-                if this.Themes.Has(Theme) {
-                    Theme := this.Themes.Get(Theme)
-                } else if this.ThemeCollection && this.ThemeCollection.Has(Theme) {
-                    Theme := this.ThemeCollection.Get(Theme)
-                    this.Themes.Set(Theme.__Name, Theme)
-                } else {
-                    throw Error('Unable to find a theme with the input name.', -1, Theme)
-                }
+                throw Error('Unable to find a theme with the input name.', -1, Theme)
             }
+        }
+        if this.Xtooltips.Count {
+            this.Apply(Theme)
+        }
+        this.__ActiveTheme := Theme
+    }
+    SetName(GroupName) {
+        if this.ThemeGroupCollection {
+            if this.ThemeGroupCollection.Has(this.__Name) {
+                this.ThemeGroupCollection.Delete(this.__Name)
+            }
+            this.ThemeGroupCollection.Set(GroupName, this)
+        }
+        this.__Name := GroupName
+        for hwnd, xtt in this.Xtooltips {
+            xtt.ThemeGroupName := GroupName
+        }
+    }
+    ThemeAdd(Theme, Activate := true) {
+        if IsObject(Theme) {
+            if !Theme.HasOwnProp('__Name') {
+                ; If you get this error, call `ThemeObj.SetName("SomeName")`.
+                XttErrors.ThrowThemeGroupNoThemeName()
+            }
+            if not Theme is XttTheme {
+                Theme := XttTheme(Theme)
+            }
+        } else {
+            Theme := this.ThemeCollection.Get(Theme)
+        }
+        this.Themes.Set(Theme.__Name, Theme)
+        if Activate {
             if this.Xtooltips.Count {
                 this.Apply(Theme)
             }
             this.__ActiveTheme := Theme
         }
-        ThemeAdd(Theme, Activate := true) {
-            if IsObject(Theme) {
-                if !Theme.HasOwnProp('__Name') {
-                    ; If you get this error, call `ThemeObj.SetName("SomeName")`.
-                    XttErrors.ThrowThemeGroupNoThemeName()
-                }
-                if not Theme is Xtooltip.Theme {
-                    Theme := Xtooltip.Theme(Theme)
-                }
-            } else {
-                Theme := this.ThemeCollection.Get(Theme)
-            }
-            this.Themes.Set(Theme.__Name, Theme)
-            if Activate {
-                if this.Xtooltips.Count {
-                    this.Apply(Theme)
-                }
-                this.__ActiveTheme := Theme
-            }
-            return Theme
+        return Theme
+    }
+    ThemeDelete(Theme) {
+        this.Themes.Delete(IsObject(Theme) ? Theme.__Name : Theme)
+    }
+    ThemeGet(ThemeName) {
+        return this.Themes.Get(ThemeName)
+    }
+    ThemeSet(Theme) {
+        if !Theme.HasOwnProp('__Name') {
+            ; If you get this error, call `ThemeObj.SetName("SomeName")`.
+            XttErrors.ThrowThemeGroupNoThemeName()
         }
-        ThemeDelete(Theme) {
-            this.Themes.Delete(IsObject(Theme) ? Theme.__Name : Theme)
-        }
-        ThemeGet(ThemeName) {
-            return this.Themes.Get(ThemeName)
-        }
-        ThemeSet(Theme) {
-            if !Theme.HasOwnProp('__Name') {
-                ; If you get this error, call `ThemeObj.SetName("SomeName")`.
-                XttErrors.ThrowThemeGroupNoThemeName()
-            }
-            this.Themes.Set(Theme.__Name, Theme)
-        }
-        ThemeSetValue(OptionName, Value, Apply := true) {
-            this.__ActiveTheme.%OptionName% := Value
-            if Apply {
-                this.Apply%Xtooltip.Theme.GetOptionCategory(OptionName)%()
-            }
-        }
-        XttAdd(XttObj, ApplyActiveTheme := true) {
-            this.Xtooltips.Set(XttObj.Hwnd, XttObj)
-            if ApplyActiveTheme && this.__ActiveTheme {
-                this.__ActiveTheme.Apply(XttObj)
-                XttObj.__ThemeGroupName := this.Name
-            }
-        }
-        XttDelete(XttObj) {
-            this.Xtooltips.Delete(XttObj.Hwnd)
-            XttObj.__ThemeGroupName := ''
-        }
-
-        ActiveTheme {
-            Get => this.__ActiveTheme
-            Set => this.ThemeActivate(Value)
-        }
-        Name {
-            Get => this.__Name
-            Set => this.SetName(Value)
+        this.Themes.Set(Theme.__Name, Theme)
+    }
+    ThemeSetValue(OptionName, Value, Apply := true) {
+        this.__ActiveTheme.%OptionName% := Value
+        if Apply {
+            this.Apply%XttTheme.GetOptionCategory(OptionName)%()
         }
     }
+    XttAdd(Xtt, ApplyActiveTheme := true) {
+        this.Xtooltips.Set(Xtt.Hwnd, Xtt)
+        Xtt.ThemeGroupName := this.__Name
+        if ApplyActiveTheme && this.__ActiveTheme {
+            this.__ActiveTheme.Apply(Xtt)
+        }
+    }
+    XttDelete(Xtt) {
+        this.Xtooltips.Delete(Xtt.Hwnd)
+        Xtt.ThemeGroupName := ''
+    }
 
-    class Base {
-        ThemeGroupCollection => Xtooltip.ThemeGroupCollection
-        ThemeCollection => Xtooltip.ThemeCollection
-        XtooltipCollection => Xtooltip.XtooltipCollection
+    ActiveTheme {
+        Get => this.__ActiveTheme
+        Set => this.SetActiveTheme(Value)
+    }
+    Name {
+        Get => this.__Name
+        Set => this.SetName(Value)
     }
 }
 
 /**
- * @classdesc - `ToolInfo` maps the members of a `TTTOOLINFO` structure to AHK object properties.
+ * @classdesc - {@link TtToolInfo} maps the members of a TTTOOLINFO structure to AHK object properties.
  *
- * This webpage contains the members of the `TTTOOLINFO` structure:
+ * This webpage contains the members of the TTTOOLINFO structure:
  * {@link https://learn.microsoft.com/en-us/windows/win32/api/commctrl/ns-commctrl-tttoolinfoa}.
  */
-class ToolInfo {
+class TtToolInfo {
     static __New() {
         this.DeleteProp('__New')
-        this.Size :=
+        this.Prototype.cbSizeInstance :=
         ;   size          member        type        offset
             4 +         ; cbSize        uint         0
             4 +         ; uFlags        uint         4
@@ -1654,7 +1772,7 @@ class ToolInfo {
     }
     static HitTest(toolHwnd, X, Y) {
         hti := {
-            Buffer: Buffer(this.Size + A_PtrSize + 8)
+            Buffer: Buffer(this.Prototype.cbSizeInstance + A_PtrSize + 8)
           , ToolInfo: { ttHwnd: toolHwnd, Buffer: { Ptr: hti.Ptr + A_PtrSize + 8, Size: this.Size } }
         }
         hti.Ptr := hti.Buffer.Ptr
@@ -1667,8 +1785,8 @@ class ToolInfo {
     }
     __New(ttHwnd, toolHwnd?, uId?, TextBufferSize?) {
         this.ttHwnd := ttHwnd
-        this.Buffer := Buffer(ToolInfo.Size, 0)
-        NumPut('uint', ToolInfo.Size, this) ; cbSize
+        this.Buffer := Buffer(this.cbSizeInstance, 0)
+        NumPut('uint', this.cbSizeInstance, this) ; cbSize
         if IsSet(toolHwnd) {
             this.Hwnd := toolHwnd
         }
@@ -1772,8 +1890,8 @@ class ToolInfo {
     }
 
     /**
-     * @classdesc - The purpose of `ToolInfo.Params` is to simplify the process of interacting with
-     * the `TTTOOLINFO` structure that is needed for many tooltip-related functions / messages.
+     * @classdesc - The purpose of {@link TtToolInfo.Params} is to simplify the process of interacting with
+     * the TTTOOLINFO structure that is needed for many tooltip-related functions / messages.
      *
      * {@link https://learn.microsoft.com/en-us/windows/win32/controls/ttm-settoolinfo}.
      */
@@ -1784,9 +1902,9 @@ class ToolInfo {
         }
         /**
          * @description - Validates the parameters and copies their values to this instance of
-         * `ToolInfo.Params`.
+         * {@link TtToolInfo.Params}.
          *
-         * @param {Xtooltip} XttObj - The `Xtooltip` object. This object's handle is copied
+         * @param {Xtooltip} Xtt - The {@link Xtooltip} object. This object's handle is copied
          * to property "TtHwnd".
          *
          * @param {Object} Params - An object with property:value pairs.
@@ -1837,7 +1955,7 @@ class ToolInfo {
          * @throws {PropertyError} - The flag `TTF_IDISHWND` is in use, but the property "Id" is unset.
          * @throws {PropertyError} - If at least one of properties "L", "T", "R", or "B", is set, then all four must be set.
          */
-        __New(XttObj, Params) {
+        __New(Xtt, Params) {
             if HasProp(Params, 'Flags') {
                 if !IsNumber(Params.Flags) {
                     throw _TypeError('Flags')
@@ -1852,8 +1970,8 @@ class ToolInfo {
                     if !HasProp(Params, 'Id') {
                         ; If you get this error, you must set "Id" with the handle to the window that
                         ; is the tool that this `ToolInfo` object represents. For example, by passing
-                        ; a `Gui.Control` object to `Xtooltip.Prototype.GetToolControl` or to
-                        ; `Xtooltip.Prototype.GetToolWindow`.
+                        ; a `Gui.Control` object to {@link Xtooltip.Prototype.GetToolControl} or to
+                        ; {@link Xtooltip.Prototype.GetToolWindow}.
                         throw PropertyError('The flag ``TTF_IDISHWND`` in use, but the property "Id" is unset.', -1)
                     }
                 }
@@ -1890,9 +2008,9 @@ class ToolInfo {
                 }
             }
             if !this.HasOwnProp('Id') {
-                this.Id := ToolInfo.GetUid()
+                this.Id := TtToolInfo.GetUid()
             }
-            this.TtHwnd := XttObj.Hwnd
+            this.TtHwnd := Xtt.Hwnd
 
             return
 
@@ -1901,16 +2019,16 @@ class ToolInfo {
             }
         }
         /**
-         * @description - The purpose of `ToolInfo.Params.Prototype.Call` is to prepare a
-         * `TTTOOLINFO` structure with new values before sending TTM_SETTOOLINFO.
+         * @description - The purpose of {@link ToolInfo.Params.Prototype.Call} is to prepare a
+         * TTTOOLINFO structure with new values before sending TTM_SETTOOLINFO.
          *
-         * `ToolInfo.Params.Prototype.Call` validates the property values on this object, gets the
-         * current `TTTOOLINFO` structure from the `Xtooltip` object by sending TTM_GETCURRENTTOOLW,
+         * {@link ToolInfo.Params.Prototype.Call} validates the property values on this object, gets the
+         * current TTTOOLINFO structure from the {@link Xtooltip} object by sending TTM_GETCURRENTTOOLW,
          * updates the members using the values of the properties on this object, then returns the
-         * updated `ToolInfo` object.
+         * updated {@link TtToolInfo} object.
          */
-        Call(XttObj) {
-            if !XttObj.GetCurrentTool(&ti) {
+        Call(Xtt) {
+            if !Xtt.GetCurrentTool(&ti) {
                 ti.Hwnd := this.Hwnd
                 ti.Id := this.Id
             }
@@ -1968,25 +2086,25 @@ class XttRect {
     L {
         Get => NumGet(this, 0, 'int')
         Set {
-            NumPut('int', Value, this, 0)
+            NumPut('int', Number(Value), this, 0)
         }
     }
     T {
         Get => NumGet(this, 4, 'int')
         Set {
-            NumPut('int', Value, this, 4)
+            NumPut('int', Number(Value), this, 4)
         }
     }
     R {
         Get => NumGet(this, 8, 'int')
         Set {
-            NumPut('int', Value, this, 8)
+            NumPut('int', Number(Value), this, 8)
         }
     }
     B {
         Get => NumGet(this, 12, 'int')
         Set {
-            NumPut('int', Value, this, 12)
+            NumPut('int', Number(Value), this, 12)
         }
     }
     W {
@@ -2006,65 +2124,76 @@ class XttRect {
 class TtGetTitle {
     static __New() {
         this.DeleteProp('__New')
-        this.Size :=
-        4 +         ; DWORD         dwSize
-        4 +         ; UINT          uTitleBitmap
-        A_PtrSize + ; UINT          cch + 4 for alignment on x64
-        A_PtrSize   ; WCHAR         *pszTitle
-
-        if A_PtrSize == 8 {
-            this.Prototype.PtrOffset := 16
-        } else {
-            this.Prototype.PtrOffset := 12
-        }
+        proto := this.Prototype
+        proto.cbSizeInstance :=
+        ; Size      Type       Symbol          Offset               Padding
+        4 +         ; DWORD    dwSize          0
+        4 +         ; UINT     uTitleBitmap    4
+        A_PtrSize + ; UINT     cch             8                    +4 on x64 only
+        A_PtrSize   ; WCHAR    *pszTitle       8 + A_PtrSize * 1
+        proto.offset_dwSize        := 0
+        proto.offset_uTitleBitmap  := 4
+        proto.offset_cch           := 8
+        proto.offset_pszTitle      := 8 + A_PtrSize * 1
     }
-    __New(Xtt, MaxChars?, Send := true) {
+    __New(Xtt, MaxChars := XTT_DEFAULT_TITLEMAXCHARS, Send := true) {
         this.Hwnd := Xtt.Hwnd
-        this.Buffer := Buffer(TtGetTitle.Size, 0)
-        NumPut('uint', this.Buffer.Size, this.Buffer.Ptr)
+        this.Buffer := Buffer(this.cbSizeInstance, 0)
+        NumPut('uint', this.Buffer.Size, this.Buffer)
         if Send {
-            if IsSet(MaxChars) {
-                this.Chars := MaxChars + 1
-                this.SetTextBuffer()
-            } else {
-                throw Error('``MaxChars`` must be set when ``Send`` is nonzero.', -1)
-            }
-            SendMessage(TTM_GETTITLE, 0, this.Buffer.Ptr, this.Hwnd)
-        }
-    }
-    Call(MaxChars, &OutIcon?) {
-        if WinExist(this.Hwnd) {
-            this.Chars := MaxChars + 1
-            NumPut('uint', 0, this.Buffer, 4)
+            this.cch := MaxChars
             this.SetTextBuffer()
             SendMessage(TTM_GETTITLE, 0, this.Buffer.Ptr, this.Hwnd)
-        } else {
+        }
+    }
+    Call(MaxChars := XTT_DEFAULT_TITLEMAXCHARS, &OutIcon?) {
+        if !WinExist(this.Hwnd) {
             throw Error('The window no longer exists.', -1)
         }
-        OutIcon := this.Icon
-        if this.Chars {
-            return this.Title
+        if !this.HasOwnProp('TextBuffer') || this.TextBuffer.Size < MaxChars * 2 {
+            this.SetTextBuffer(MaxChars)
         }
+        SendMessage(TTM_GETTITLE, 0, this.Buffer.Ptr, this.Hwnd)
+        OutIcon := this.uTitleBitmap
+        return this.Title
     }
-    SetTextBuffer() {
-        this.TextBuffer := Buffer(this.TitleSize)
-        NumPut('ptr', this.TextBuffer.Ptr, this.Buffer, this.PtrOffset)
+    SetTextBuffer(MaxChars?) {
+        if IsSet(MaxChars) {
+            this.cch := MaxChars
+        }
+        this.TextBuffer := Buffer(this.cch * 2)
+        NumPut('ptr', this.TextBuffer.Ptr, this.Buffer, this.offset_pszTitle)
     }
-    Chars {
-        Get => NumGet(this.Buffer, 8, 'uint')
+    dwSize {
+        Get => NumGet(this.Buffer, this.offset_dwSize, 'uint')
         Set {
-            NumPut('uint', Value, this.Buffer, 8)
+            NumPut('uint', Value, this.Buffer, this.offset_dwSize)
         }
     }
-    Icon => NumGet(this.Buffer, 4, 'uint')
-    Title => StrGet(this.TitlePtr) ; XTT_DEFAULT_ENCODING = UTF-16
-    TitlePtr => NumGet(this.Buffer, this.PtrOffset, 'ptr')
-    TitleSize => this.Chars * 2
+    uTitleBitmap {
+        Get => NumGet(this.Buffer, this.offset_uTitleBitmap, 'uint')
+        Set {
+            NumPut('uint', Value, this.Buffer, this.offset_uTitleBitmap)
+        }
+    }
+    cch {
+        Get => NumGet(this.Buffer, this.offset_cch, 'uint')
+        Set {
+            NumPut('uint', Value, this.Buffer, this.offset_cch)
+        }
+    }
+    pszTitle {
+        Get => NumGet(this.Buffer, this.offset_pszTitle, 'ptr')
+        Set {
+            NumPut('ptr', Value, this.Buffer, this.offset_pszTitle)
+        }
+    }
+    Title => this.pszTitle ? StrGet(this.pszTitle, XTT_DEFAULT_ENCODING) : ''
     Ptr => this.Buffer.Ptr
     Size => this.Buffer.Size
 }
 
-class XtooltipCollection extends XttCollectionBase {
+class XttCollection extends XttCollectionBase {
 
 }
 
@@ -2073,10 +2202,6 @@ class ToolInfoParamsCollection extends XttCollectionBase {
 class XttThemeCollection extends XttCollectionBase {
 }
 class XttThemeGroupCollection extends XttCollectionBase {
-    Add(ThemeGroupName, Group?) {
-        this.Set(ThemeGroupName, Group ?? XTooltip.ThemeGroup())
-        return this.Get(ThemeGroupName)
-    }
 }
 class XttChildThemeCollection extends XttCollectionBase {
 }
@@ -2113,13 +2238,360 @@ class XttCollectionBase extends Map {
 
 class XttErrors {
     static ThrowThemeGroupNoThemeName() {
-        throw Error('A theme must be set with a name to be added to a theme group.', -2)
+        throw Error('A theme must be set with a name to be added to a theme group.', -1)
     }
     static ThrowChildThemeNoName() {
-        throw Error('A theme must be set with a name to be made a child of another theme.', -2)
+        throw Error('A theme must be set with a name to be made a child of another theme.', -1)
     }
     static ThrowTrackingError() {
-        throw Error('Only one tracking tool can be added to an Xtooltip at a time.', -2)
+        throw Error('Only one tracking tool can be added to an Xtooltip at a time.', -1)
+    }
+}
+
+/**
+ * See the bottom of the file for static Windows API symbols related to fonts.
+ * Note you cannot use an Ahk `Gui` handle with {@link XttLogfont}; it has to be a `Gui.Control` or some
+ * other type of window.
+ * @classdesc - A wrapper around the LOGFONT structure.
+ * {@link https://learn.microsoft.com/en-us/windows/win32/api/dimm/ns-dimm-logfontw}
+ */
+class XttLogfont {
+    static __New() {
+        this.DeleteProp('__New')
+        global WM_GETFONT := 0x0031, WM_SETFONT := 0x0030, LF_DEFAULT_ENCODING := 'UTF-16'
+        Proto := this.Prototype
+        Proto.Encoding := LF_DEFAULT_ENCODING
+        /**
+         * The structure's size.
+         * @memberof XttLogfont
+         * @instance
+         */
+        Proto.Size :=
+        4 + ; LONG  lfHeight                    0
+        4 + ; LONG  lfWidth                     4
+        4 + ; LONG  lfEscapement                8
+        4 + ; LONG  lfOrientation               12
+        4 + ; LONG  lfWeight                    16
+        1 + ; BYTE  lfItalic                    20
+        1 + ; BYTE  lfUnderline                 21
+        1 + ; BYTE  lfStrikeOut                 22
+        1 + ; BYTE  lfCharSet                   23
+        1 + ; BYTE  lfOutPrecision              24
+        1 + ; BYTE  lfClipPrecision             25
+        1 + ; BYTE  lfQuality                   26
+        1 + ; BYTE  lfPitchAndFamily            27
+        64  ; WCHAR lfFaceName[LF_FACESIZE]     28
+        Proto.Handle := Proto.Hwnd := 0
+    }
+    /**
+     * @description - Creates a {@link XttLogfont} object using a ptr address instead of a buffer. The
+     * expected use case for this is when a Windows API function returns a LOGFONT structure. In
+     * such cases, the system is managing that memory, and so it should be assumed that the memory
+     * will only be available temporarily. When using {@link XttLogfont.FromPtr}, do not cache a reference to
+     * the {@link XttLogfont} object; use it then let it go out of scope, or copy its values to an AHK buffer
+     * using {@link XttLogfont.Prototype.Clone}.
+     * @param {Integer} Ptr - The address of the LOGFONT structure.
+     */
+    static FromPtr(Ptr) {
+        lf := { Buffer: { Ptr: Ptr, Size: this.Prototype.Size }, Handle: 0 }
+        ObjSetBase(lf, this.Prototype)
+        return lf
+    }
+    /**
+     * Constructs a new {@link XttLogfont} object, optionally associating the object with a window handle.
+     * @class
+     * @param {Integer} [Hwnd = 0] - The window handle to associate with the {@link XttLogfont} object. If
+     * `Hwnd` is set with a nonzero value, {@link XttLogfont.Prototype.Call} is called to initialize this
+     * {@link XttLogfont} object's properties with values obtained from the window. If `Hwnd` is zero, this
+     * {@link XttLogfont} object's properties will all be zero.
+     * @return {XttLogfont}
+     */
+    __New(Hwnd := 0) {
+        /**
+         * A reference to the buffer object which is used as the LOGFONT structure.
+         * @memberof XttLogfont
+         * @instance
+         */
+        this.Buffer := Buffer(this.Size, 0)
+        /**
+         * The handle to the font object created by this object. Initially, this object
+         * will not have yet created an object, so the handle is `0` until {@link XttLogfont.Prototype.Apply}
+         * is called.
+         * @memberof XttLogfont
+         * @instance
+         */
+        this.Handle := 0
+        /**
+         * The handle to the window associated with this object, if any.
+         * @memberof XttLogfont
+         * @instance
+         */
+        if this.Hwnd := Hwnd {
+            this()
+        }
+    }
+    /**
+     * @description - Calls `CreateFontIndirectW` then sends WM_SETFONT to the window associated
+     * with this {@link XttLogfont} object.
+     * @param {Boolean} [Redraw = true] - The value to pass to the `lParam` parameter when sending
+     * WM_SETFONT. If true, the control redraws itself.
+     */
+    Apply() {
+        hFontOld := SendMessage(WM_GETFONT,,, this.Hwnd)
+        Flag := this.Handle = hFontOld
+        this.Handle := DllCall('CreateFontIndirectW', 'ptr', this, 'ptr')
+        SendMessage(WM_SETFONT, this.Handle, false, this.Hwnd)
+        if Flag {
+            DllCall('DeleteObject', 'ptr', hFontOld, 'int')
+        }
+    }
+    /**
+     * @description - Sends WM_GETFONT to the window associated with this {@link XttLogfont} object, updating
+     * this object's properties with the values obtained from the window.
+     * @throws {OSError} - Failed to get font object.
+     */
+    Call(*) {
+        hFont := SendMessage(WM_GETFONT,,, this.Hwnd)
+        if !DllCall('Gdi32.dll\GetObject', 'ptr', hFont, 'int', this.Size, 'ptr', this, 'uint') {
+            throw OSError('Failed to get font object.', -1)
+        }
+    }
+    /**
+     * @description - Copies the bytes from this {@link XttLogfont} object's buffer to another buffer.
+     * @param {XttLogfont|Buffer|Object} [Buf] - If set, one of the following three kinds of objects:
+     * - A {@link XttLogfont} object.
+     * - A `Buffer` object.
+     * - An object with properties { Ptr, Size }.
+     *
+     * The size of the buffer must be at least `XttLogfont.Prototype.Size + Offset`.
+     *
+     * If unset, {@link XttLogfont.Prototype.Clone} will create a buffer of adequate size.
+     * @param {Integer} [Offset = 0] - The byte offset from the start of `Buf` into which the LOGFONT
+     * structure will be copied. If `Buf` is unset, then the LOGFONT structure will begin at
+     * byte `Offset` within the buffer created by {@link XttLogfont.Prototype.Clone}.
+     * @param {Boolean} [MakeInstance = true] - If true, then an instance of {@link XttLogfont} will be
+     * created and returned by the function. If false, then only the buffer object will be returned;
+     * the object will not have any of the properties or methods associated with the {@link XttLogfont} class.
+     * @returns {Buffer|XttLogfont} - Depending on the value of `MakeInstance`, the `Buffer` object
+     * or the {@link XttLogfont} object.
+     * @throws {Error} - The input buffer's size is insufficient.
+     */
+    Clone(Buf?, Offset := 0, MakeInstance := true) {
+        if IsSet(Buf) {
+            if not Buf is Buffer && not Buf is XttLogFont {
+                throw TypeError('Invalid input parameter ``Buf``.', -1)
+            }
+        } else {
+            Buf := Buffer(this.Size + Offset)
+        }
+        if Buf.Size < this.Size + Offset {
+            throw Error('The input buffer`'s size is insufficient.', -1, Buf.Size)
+        }
+        DllCall(
+            'msvcrt.dll\memmove'
+          , 'ptr', Buf.Ptr + Offset
+          , 'ptr', this.Ptr
+          , 'int', this.Size
+          , 'ptr'
+        )
+        if MakeInstance {
+            b := this
+            loop {
+                if b := b.Base {
+                    if Type(b) = 'Prototype' {
+                        break
+                    }
+                } else {
+                    throw Error('Unable to identify the prototype object.', -1)
+                }
+            }
+            Obj := { Buffer: Buf }
+            ObjSetBase(Obj, b)
+            return Obj
+        }
+        return Buf
+    }
+    /**
+     * @description - If a font object has been created by this {@link XttLogfont} object, the font object
+     * is deleted.
+     */
+    DisposeFont() {
+        if this.Handle {
+            DllCall('DeleteObject', 'ptr', this.Handle)
+            this.Handle := 0
+        }
+    }
+    /**
+     * @description - Updates a property's value and calls {@link XttLogfont.Prototype.Apply} immediately afterward.
+     * @param {String} Name - The name of the property.
+     * @param {String|Number} Value - The value.
+     */
+    Set(Name, Value) {
+        this.%Name% := Value
+        this.Apply()
+    }
+    __Delete() {
+        if this.Handle {
+            DllCall('DeleteObject', 'ptr', this.Handle)
+            this.Handle := 0
+        }
+    }
+    /**
+     * Gets or sets the character set.
+     * @memberof XttLogfont
+     * @instance
+     */
+    CharSet {
+        Get => NumGet(this, 23, 'uchar')
+        Set => NumPut('uchar', Value, this, 23)
+    }
+    /**
+     * Gets or sets the behavior when part of a character is clipped.
+     * @memberof XttLogfont
+     * @instance
+     */
+    ClipPrecision {
+        Get => NumGet(this, 25, 'uchar')
+        Set => NumPut('uchar', Value, this, 25)
+    }
+    /**
+     * If this {@link XttLogfont} object is associated with a window, returns the dpi for the window.
+     * @memberof XttLogfont
+     * @instance
+     */
+    Dpi => this.Hwnd ? DllCall('GetDpiForWindow', 'Ptr', this.Hwnd, 'UInt') : A_ScreenDpi
+    /**
+     * Gets or sets the escapement measured in tenths of a degree.
+     * @memberof XttLogfont
+     * @instance
+     */
+    Escapement {
+        Get => NumGet(this, 8, 'int')
+        Set => NumPut('int', Value, this, 8)
+    }
+    /**
+     * Gets or sets the font facename.
+     * @memberof XttLogfont
+     * @instance
+     */
+    FaceName {
+        Get => StrGet(this.ptr + 28, 32, this.Encoding)
+        Set => StrPut(SubStr(Value, 1, 31), this.Ptr + 28, 32, XTT_DEFAULT_ENCODING)
+    }
+    /**
+     * Gets or sets the font family.
+     * @memberof XttLogfont
+     * @instance
+     */
+    Family {
+        Get => NumGet(this, 27, 'uchar') & 0xF0
+        Set => NumPut('uchar', (this.Family & 0x0F) | (Value & 0xF0), this, 27)
+    }
+    /**
+     * Gets or sets the font size. "FontSize" requires that the {@link XttLogfont} object is associated
+     * with a window handle because it needs a dpi value to work with.
+     * @memberof XttLogfont
+     * @instance
+     */
+    FontSize {
+        Get => this.Hwnd ? Round(this.Height * -72 / this.Dpi, 2) : ''
+        Set => this.Height := Round(Value * this.Dpi / -72)
+    }
+    /**
+     * Gets or sets the font height.
+     * @memberof XttLogfont
+     * @instance
+     */
+    Height {
+        Get => NumGet(this, 0, 'int')
+        Set => NumPut('int', Value, this, 0)
+    }
+    /**
+     * Gets or sets the italic flag.
+     * @memberof XttLogfont
+     * @instance
+     */
+    Italic {
+        Get => NumGet(this, 20, 'uchar')
+        Set => NumPut('uchar', Value ? 1 : 0, this, 20)
+    }
+    /**
+     * Gets or sets the orientation measured in tenths of degrees.
+     * @memberof XttLogfont
+     * @instance
+     */
+    Orientation {
+        Get => NumGet(this, 12, 'int')
+        Set => NumPut('int', Value, this, 12)
+    }
+    /**
+     * Gets or sets the behavior when multiple fonts with the same name exist on the system.
+     * @memberof XttLogfont
+     * @instance
+     */
+    OutPrecision {
+        Get => NumGet(this, 24, 'uchar')
+        Set => NumPut('uchar', Value, this, 24)
+    }
+    /**
+     * Gets or sets the pitch.
+     * @memberof XttLogfont
+     * @instance
+     */
+    Pitch {
+        Get => NumGet(this, 27, 'uchar') & 0x0F
+        Set => NumPut('uchar', (this.Pitch & 0xF0) | (Value & 0x0F), this, 27)
+    }
+    /**
+     * Returns the pointer to the buffer.
+     * @memberof XttLogfont
+     * @instance
+     */
+    Ptr => this.Buffer.Ptr
+    /**
+     * Gets or sets the quality flag.
+     * @memberof XttLogfont
+     * @instance
+     */
+    Quality {
+        Get => NumGet(this, 26, 'uchar')
+        Set => NumPut('uchar', Value, this, 26)
+    }
+    /**
+     * Gets or sets the strikeout flag.
+     * @memberof XttLogfont
+     * @instance
+     */
+    StrikeOut {
+        Get => NumGet(this, 22, 'uchar')
+        Set => NumPut('uchar', Value ? 1 : 0, this, 22)
+    }
+    /**
+     * Gets or sets the underline flag.
+     * @memberof XttLogfont
+     * @instance
+     */
+    Underline {
+        Get => NumGet(this, 21, 'uchar')
+        Set => NumPut('uchar', Value ? 1 : 0, this, 21)
+    }
+    /**
+     * Gets or sets the weight flag.
+     * @memberof XttLogfont
+     * @instance
+     */
+    Weight {
+        Get => NumGet(this, 16, 'int')
+        Set => NumPut('int', Value, this, 16)
+    }
+    /**
+     * Gets or sets the width.
+     * @memberof XttLogfont
+     * @instance
+     */
+    Width {
+        Get => NumGet(this, 4, 'int')
+        Set => NumPut('int', Value, this, 4)
     }
 }
 
@@ -2139,6 +2611,7 @@ XttDeclareConstants() {
     ; XTT - constants for this library
     XTT_DEFAULT_ENCODING := 'UTF-16'
     XTT_DEFAULT_SHOW := true
+    XTT_DEFAULT_TITLEMAXCHARS := 100
 
     ; TTM - tooltip messages
 
@@ -2269,14 +2742,13 @@ XttDeclareConstants() {
     WS_EX_OVERLAPPEDWINDOW := WS_EX_WINDOWEDGE | WS_EX_CLIENTEDGE
     WS_EX_PALETTEWINDOW := WS_EX_WINDOWEDGE | WS_EX_TOOLWINDOW | WS_EX_TOPMOST
 
-    CW_USEDEFAULT := 0x80000000
     WM_SETFONT := 0x0030
     WM_USER := 1024
 }
 
 /**
- * @description - Enables the usage of the "_S" suffix when calling `Xtooltip` instance methods,
- * `ToolInfo` static methods, `ToolInfo` instance methods, `XttRect` static methods, and `XttRect`
+ * @description - Enables the usage of the "_S" suffix when calling {@link Xtooltip} instance methods,
+ * {@link TtToolInfo} static methods, {@link TtToolInfo} instance methods, {@link XttRect} static methods, and {@link XttRect}
  * instance methods. By including "_S" at the end of a method call, the function will set the
  * thread dpi awareness context before calling the method.
  */
@@ -2300,999 +2772,123 @@ XttSetThreadDpiAwareness__Call(Obj, Name, Params) {
 
 /*
 
-CW_USEDEFAULT := 0x80000000
-
-WM_USER := 1024
-WM_SETFONT := 0x0030
-TTM_ACTIVATE := 1025
-TTM_ADDTOOLA := 1028
-TTM_ADDTOOLW := 1074
-TTM_ADJUSTRECT := 1055
-TTM_DELTOOLA := 1029
-TTM_DELTOOLW := 1075
-TTM_ENUMTOOLSA := 1038
-TTM_ENUMTOOLSW := 1082
-TTM_GETBUBBLESIZE := 1054
-TTM_GETCURRENTTOOLA := 1039
-TTM_GETCURRENTTOOLW := 1083
-TTM_GETDELAYTIME := 1045
-TTM_GETMARGIN := 1051
-TTM_GETMAXTIPWIDTH := 1049
-TTM_GETTEXTA := 1035
-TTM_GETTEXTW := 1080
-TTM_GETTIPBKCOLOR := 1046
-TTM_GETTIPTEXTCOLOR := 1047
-TTM_GETTITLE := 1059
-TTM_GETTOOLCOUNT := 1037
-TTM_GETTOOLINFOA := 1032
-TTM_GETTOOLINFOW := 1077
-TTM_HITTESTA := 1034
-TTM_HITTESTW := 1079
-TTM_NEWTOOLRECTA := 1030
-TTM_NEWTOOLRECTW := 1076
-TTM_POP := 1052
-TTM_POPUP := 1058
-TTM_RELAYEVENT := 1031
-TTM_SETDELAYTIME := 1027
-TTM_SETMARGIN := 1050
-TTM_SETMAXTIPWIDTH := 1048
-TTM_SETTIPBKCOLOR := 1043
-TTM_SETTIPTEXTCOLOR := 1044
-TTM_SETTITLEA := 1056
-TTM_SETTITLEW := 1057
-TTM_SETTOOLINFOA := 1033
-TTM_SETTOOLINFOW := 1078
-TTM_TRACKACTIVATE := 1041
-TTM_TRACKPOSITION := 1042
-TTM_UPDATE := 1053
-TTM_UPDATETIPTEXTA := 1036
-TTM_UPDATETIPTEXTW := 1081
-TTM_WINDOWFROMPOINT := 1040
-
-
-TTDT_AUTOMATIC          0
-TTDT_RESHOW             1
-TTDT_AUTOPOP            2
-TTDT_INITIAL            3
-
-https://learn.microsoft.com/en-us/windows/win32/api/commctrl/ns-commctrl-tttoolinfoa
-TTF_IDISHWND            0x0001
-TTF_CENTERTIP           0x0002
-TTF_RTLREADING          0x0004
-TTF_SUBCLASS            0x0010
-TTF_TRACK               0x0020
-TTF_ABSOLUTE            0x0080
-TTF_TRANSPARENT         0x0100
-TTF_PARSELINKS          0x1000
-TTF_DI_SETITEM          0x8000       // valid only on the TTN_NEEDTEXT callback
-
-
-TTDT_AUTOMATIC          0
-TTDT_RESHOW             1
-TTDT_AUTOPOP            2
-TTDT_INITIAL            3
-
-// ToolTip Icons (Set with TTM_SETTITLE)
-TTI_NONE                0
-TTI_INFO                1
-TTI_WARNING             2
-TTI_ERROR               3
-#if (NTDDI_VERSION >= NTDDI_VISTA)
-TTI_INFO_LARGE          4
-TTI_WARNING_LARGE       5
-TTI_ERROR_LARGE         6
-#endif  // (NTDDI_VERSION >= NTDDI_VISTA)
-
-; Indicates that the tooltip control appears when the cursor is on a tool, even if the tooltip control's owner window is inactive. Without this style, the tooltip appears only when the tool's owner window is active.
-TTS_ALWAYSTIP := 0x01
-
-; Prevents the system from stripping ampersand characters from a string or terminating a string at a tab character. Without this style, the system automatically strips ampersand characters and terminates a string at the first tab character. This allows an application to use the same string as both a menu item and as text in a tooltip control.
-TTS_NOPREFIX            0x02
-
-; Version 5.80. Disables sliding tooltip animation on Windows 98 and Windows 2000 systems. This style is ignored on earlier systems.
-TTS_NOANIMATE           0x10
-
-; Version 5.80. Disables fading tooltip animation.
-TTS_NOFADE              0x20
-
-; Version 5.80. Indicates that the tooltip control has the appearance of a cartoon "balloon," with rounded corners and a stem pointing to the item.
-TTS_BALLOON             0x40
-
-; Displays a Close button on the tooltip. Valid only when the tooltip has the TTS_BALLOON style and a title; see TTM_SETTITLE.
-TTS_CLOSE               0x80
-
-#if (NTDDI_VERSION >= NTDDI_VISTA)
-; Uses themed hyperlinks. The theme will define the styles for any links in the tooltip. This style always requires TTF_PARSELINKS to be set.
-TTS_USEVISUALSTYLE      0x100  // Use themed hyperlinks
-
-TTN_GETDISPINFOA        4294966766
-TTN_GETDISPINFOW        4294966766
-TTN_SHOW                4294966775
-TTN_POP                 4294966774
-TTN_LINKCLICK           4294966773
-
-WM_USER := 0x0400
-TTM_ACTIVATE := 0x0400 + 1
-TTM_ADDTOOLA := 0x0400 + 4
-TTM_ADDTOOLW := 0x0400 + 50
-TTM_ADJUSTRECT := 0x0400 + 31
-TTM_DELTOOLA := 0x0400 + 5
-TTM_DELTOOLW := 0x0400 + 51
-TTM_ENUMTOOLSA := 0x0400 +14
-TTM_ENUMTOOLSW := 0x0400 +58
-TTM_GETBUBBLESIZE := 0x0400 + 30
-TTM_GETCURRENTTOOLA := 0x0400 + 15
-TTM_GETCURRENTTOOLW := 0x0400 + 59
-TTM_GETDELAYTIME := 0x0400 + 21
-TTM_GETMARGIN := 0x0400 + 27
-TTM_GETMAXTIPWIDTH := 0x0400 + 25
-TTM_GETTEXTA := 0x0400 +11
-TTM_GETTEXTW := 0x0400 +56
-TTM_GETTIPBKCOLOR := 0x0400 + 22
-TTM_GETTIPTEXTCOLOR := 0x0400 + 23
-TTM_GETTITLE := 0x0400 + 35
-TTM_GETTOOLCOUNT := 0x0400 +13
-TTM_GETTOOLINFOA := 0x0400 + 8
-TTM_GETTOOLINFOW := 0x0400 + 53
-TTM_HITTESTA := 0x0400 +10
-TTM_HITTESTW := 0x0400 +55
-TTM_NEWTOOLRECTA := 0x0400 + 6
-TTM_NEWTOOLRECTW := 0x0400 + 52
-TTM_POP := 0x0400 + 28
-TTM_POPUP := 0x0400 + 34
-TTM_RELAYEVENT := 0x0400 + 7
-TTM_SETDELAYTIME := 0x0400 + 3
-TTM_SETMARGIN := 0x0400 + 26
-TTM_SETMAXTIPWIDTH := 0x0400 + 24
-TTM_SETTIPBKCOLOR := 0x0400 + 19
-TTM_SETTIPTEXTCOLOR := 0x0400 + 20
-TTM_SETTITLEA := 0x0400 + 32
-TTM_SETTITLEW := 0x0400 + 33
-TTM_SETTOOLINFOA := 0x0400 + 9
-TTM_SETTOOLINFOW := 0x0400 + 54
-TTM_TRACKACTIVATE := 0x0400 + 17
-TTM_TRACKPOSITION := 0x0400 + 18
-TTM_UPDATE := 0x0400 + 29
-TTM_UPDATETIPTEXTA := 0x0400 +12
-TTM_UPDATETIPTEXTW := 0x0400 +57
-TTM_WINDOWFROMPOINT := 0x0400 + 16
-
-TOOLTIPS_CLASSW := "tooltips_class32"
-
-; Places the window at the bottom of the Z order. If the hWnd parameter identifies a topmost window, the window loses its topmost status and is placed at the bottom of all other windows.
-HWND_BOTTOM := 1
-
-; Places the window above all non-topmost windows (that is, behind all topmost windows). This flag has no effect if the window is already a non-topmost window.
-HWND_NOTOPMOST := -2
-
-; Places the window at the top of the Z order.
-HWND_TOP := 0
-
-; Places the window above all non-topmost windows. The window maintains its topmost position even when it is deactivated.
-HWND_TOPMOST := -1
-
-; The window has a thin-line border
-WS_BORDER := 0x00800000
-
-; The window has a title bar (includes the WS_BORDER style).
-WS_CAPTION := 0x00C00000
-
-; The window is a child window. A window with this style cannot have a menu bar. This style cannot
-; be used with the WS_POPUP style
-WS_CHILD := 0x40000000
-
-; Same as the WS_CHILD style.
-WS_CHILDWINDOW := 0x40000000
-
-; Excludes the area occupied by child windows when drawing occurs within the parent window. This
-; style is used when creating the parent window
-WS_CLIPCHILDREN := 0x02000000
-
-; Clips child windows relative to each other; that is, when a particular child window receives a
-; WM_PAINT message, the WS_CLIPSIBLINGS style clips all other overlapping child windows out of the
-; region of the child window to be updated. If WS_CLIPSIBLINGS is not specified and child windows
-; overlap, it is possible, when drawing within the client area of a child window, to draw within
-; the client area of a neighboring child window
-WS_CLIPSIBLINGS := 0x04000000
-
-; The window is initially disabled. A disabled window cannot receive input from the user. To change
-; this after a window has been created, use the EnableWindow function
-WS_DISABLED := 0x08000000
-
-; The window has a border of a style typically used with dialog boxes. A window with this style
-; cannot have a title bar
-WS_DLGFRAME := 0x00400000
-
-; The window is the first control of a group of controls. The group consists of this first control
-; and all controls defined after it, up to the next control with the WS_GROUP style. The first
-; control in each group usually has the WS_TABSTOP style so that the user can move from group to
-; group. The user can subsequently change the keyboard focus from one control in the group to the
-; next control in the group by using the direction keys. You can turn this style on and off to
-; change dialog box navigation. To change this style after a window has been created, use the
-; SetWindowLong function
-WS_GROUP := 0x00020000
-
-; The window has a horizontal scroll bar.
-WS_HSCROLL := 0x00100000
-
-; The window is initially minimized. Same as the WS_MINIMIZE style.
-WS_ICONIC := 0x20000000
-
-; The window is initially maximized.
-WS_MAXIMIZE := 0x01000000
-
-; The window has a maximize button. Cannot be combined with the WS_EX_CONTEXTHELP style. The
-; WS_SYSMENU style must also be specified
-WS_MAXIMIZEBOX := 0x00010000
-
-; The window is initially minimized. Same as the WS_ICONIC style.
-WS_MINIMIZE := 0x20000000
-
-; The window has a minimize button. Cannot be combined with the WS_EX_CONTEXTHELP style. The
-; WS_SYSMENU style must also be specified
-WS_MINIMIZEBOX := 0x00020000
-
-; The window is an overlapped window. An overlapped window has a title bar and a border. Same as
-; the WS_TILED style
-WS_OVERLAPPED := 0x00000000
-
-WS_OVERLAPPEDWINDOW
-(WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_THICKFRAME | WS_MINIMIZEBOX | WS_MAXIMIZEBOX)
-The window is an overlapped window. Same as the WS_TILEDWINDOW style.
-
-; The window is a pop-up window. This style cannot be used with the WS_CHILD style.
-WS_POPUP := 0x80000000
-
-WS_POPUPWINDOW
-(WS_POPUP | WS_BORDER | WS_SYSMENU)
-The window is a pop-up window. The WS_CAPTION and WS_POPUPWINDOW styles must be combined to make the window menu visible.
-
-; The window has a sizing border. Same as the WS_THICKFRAME style.
-WS_SIZEBOX := 0x00040000
-
-; The window has a window menu on its title bar. The WS_CAPTION style must also be specified.
-WS_SYSMENU := 0x00080000
-
-; The window is a control that can receive the keyboard focus when the user presses the TAB key.
-; Pressing the TAB key changes the keyboard focus to the next control with the WS_TABSTOP style.
-; You can turn this style on and off to change dialog box navigation. To change this style after a
-; window has been created, use the SetWindowLong function. For user-created windows and modeless
-; dialogs to work with tab stops, alter the message loop to call the IsDialogMessage
-; function
-WS_TABSTOP := 0x00010000
-
-; The window has a sizing border. Same as the WS_SIZEBOX style.
-WS_THICKFRAME := 0x00040000
-
-; The window is an overlapped window. An overlapped window has a title bar and a border. Same as
-; the WS_OVERLAPPED style
-WS_TILED := 0x00000000
-
-WS_TILEDWINDOW
-(WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_THICKFRAME | WS_MINIMIZEBOX | WS_MAXIMIZEBOX)
-The window is an overlapped window. Same as the WS_OVERLAPPEDWINDOW style.
-
-; The window is initially visible. This style can be turned on and off by using the ShowWindow or
-; SetWindowPos function
-WS_VISIBLE := 0x10000000
-
-; The window has a vertical scroll bar.
-WS_VSCROLL := 0x00200000
-
-
-; The window accepts drag-drop files.
-WS_EX_ACCEPTFILES := 0x00000010
-
-; Forces a top-level window onto the taskbar when the window is visible.
-WS_EX_APPWINDOW := 0x00040000
-
-; The window has a border with a sunken edge.
-WS_EX_CLIENTEDGE := 0x00000200
-
-; Paints all descendants of a window in bottom-to-top painting order using double-buffering.
-; Bottom-to-top painting order allows a descendent window to have translucency (alpha) and
-; transparency (color-key) effects, but only if the descendent window also has the
-; WS_EX_TRANSPARENT bit set. Double-buffering allows the window and its descendents to be painted
-; without flicker. This cannot be used if the window has a class style of CS_OWNDC, CS_CLASSDC, or
-; CS_PARENTDC.  Windows 2000: This style is not supported
-WS_EX_COMPOSITED := 0x02000000
-
-; The title bar of the window includes a question mark. When the user clicks the question mark, the
-; cursor changes to a question mark with a pointer. If the user then clicks a child window, the
-; child receives a WM_HELP message. The child window should pass the message to the parent window
-; procedure, which should call the WinHelp function using the HELP_WM_HELP command. The Help
-; application displays a pop-up window that typically contains help for the child window.
-; WS_EX_CONTEXTHELP cannot be used with the WS_MAXIMIZEBOX or WS_MINIMIZEBOX styles
-WS_EX_CONTEXTHELP := 0x00000400
-
-; The window itself contains child windows that should take part in dialog box navigation. If this
-; style is specified, the dialog manager recurses into children of this window when performing
-; navigation operations such as handling the TAB key, an arrow key, or a keyboard
-; mnemonic
-WS_EX_CONTROLPARENT := 0x00010000
-
-; The window has a double border; the window can, optionally, be created with a title bar by
-; specifying the WS_CAPTION style in the dwStyle parameter
-WS_EX_DLGMODALFRAME := 0x00000001
-
-; The window is a layered window. This style cannot be used if the window has a class style of
-; either CS_OWNDC or CS_CLASSDC. Windows 8: The WS_EX_LAYERED style is supported for top-leve
-; windows and child windows. Previous Windows versions support WS_EX_LAYERED only for top-leve
-; windows
-WS_EX_LAYERED := 0x00080000
-
-; If the shell language is Hebrew, Arabic, or another language that supports reading order
-; alignment, the horizontal origin of the window is on the right edge. Increasing horizontal values
-; advance to the left.
-WS_EX_LAYOUTRTL := 0x00400000
-
-; The window has generic left-aligned properties. This is the default.
-WS_EX_LEFT := 0x00000000
-
-; If the shell language is Hebrew, Arabic, or another language that supports reading order
-; alignment, the vertical scroll bar (if present) is to the left of the client area. For other
-; languages, the style is ignored
-WS_EX_LEFTSCROLLBAR := 0x00004000
-
-; The window text is displayed using left-to-right reading-order properties. This is the default.
-WS_EX_LTRREADING := 0x00000000
-
-; The window is a MDI child window.
-WS_EX_MDICHILD := 0x00000040
-
-; A top-level window created with this style does not become the foreground window when the user
-; clicks it. The system does not bring this window to the foreground when the user minimizes or
-; closes the foreground window. The window should not be activated through programmatic access or
-; via keyboard navigation by accessible technology, such as Narrator. To activate the window, use
-; the SetActiveWindow or SetForegroundWindow function. The window does not appear on the taskbar by
-; default. To force the window to appear on the taskbar, use the WS_EX_APPWINDOW
-; style
-WS_EX_NOACTIVATE := 0x08000000
-
-; The window does not pass its window layout to its child windows.
-WS_EX_NOINHERITLAYOUT := 0x00100000
-
-; The child window created with this style does not send the WM_PARENTNOTIFY message to its parent
-; window when it is created or destroyed
-WS_EX_NOPARENTNOTIFY := 0x00000004
-
-; The window does not render to a redirection surface. This is for windows that do not have visible
-; content or that use mechanisms other than surfaces to provide their visua
-WS_EX_NOREDIRECTIONBITMAP := 0x00200000
-
-; The window is an overlapped window.
-WS_EX_OVERLAPPEDWINDOW := (WS_EX_WINDOWEDGE | WS_EX_CLIENTEDGE)
-
-; The window is palette window, which is a modeless dialog box that presents an array of commands.
-WS_EX_PALETTEWINDOW := (WS_EX_WINDOWEDGE | WS_EX_TOOLWINDOW | WS_EX_TOPMOST)
-
-; The window has generic "right-aligned" properties. This depends on the window class. This style
-; has an effect only if the shell language is Hebrew, Arabic, or another language that supports
-; reading-order alignment; otherwise, the style is ignored. Using the WS_EX_RIGHT style for static
-; or edit controls has the same effect as using the SS_RIGHT or ES_RIGHT style, respectively. Using
-; this style with button controls has the same effect as using BS_RIGHT and BS_RIGHTBUTTON styles.
-WS_EX_RIGHT := 0x00001000
-
-; The vertical scroll bar (if present) is to the right of the client area. This is the default.
-WS_EX_RIGHTSCROLLBAR := 0x00000000
-
-; If the shell language is Hebrew, Arabic, or another language that supports reading-order
-; alignment, the window text is displayed using right-to-left reading-order properties. For other
-; languages, the style is ignored
-WS_EX_RTLREADING := 0x00002000
-
-; The window has a three-dimensional border style intended to be used for items that do not accept
-; user input
-WS_EX_STATICEDGE := 0x00020000
-
-; The window is intended to be used as a floating toolbar. A tool window has a title bar that is
-; shorter than a normal title bar, and the window title is drawn using a smaller font. A too
-; window does not appear in the taskbar or in the dialog that appears when the user presses
-; ALT+TAB. If a tool window has a system menu, its icon is not displayed on the title bar. However,
-; you can display the system menu by right-clicking or by typing ALT+SPACE.
-WS_EX_TOOLWINDOW := 0x00000080
-
-; The window should be placed above all non-topmost windows and should stay above them, even when
-; the window is deactivated. To add or remove this style, use the SetWindowPos function
-WS_EX_TOPMOST := 0x00000008
-
-; The window should not be painted until siblings beneath the window (that were created by the same
-; thread) have been painted. The window appears transparent because the bits of underlying sibling
-; windows have already been painted. To achieve transparency without these restrictions, use the
-; SetWindowRgn function
-WS_EX_TRANSPARENT := 0x00000020
-
-; The window has a border with a raised edge.
-WS_EX_WINDOWEDGE := 0x00000100
-
-
-
-/*
- * Window Messages
-
-
-#define WM_NULL                         0x0000
-#define WM_CREATE                       0x0001
-#define WM_DESTROY                      0x0002
-#define WM_MOVE                         0x0003
-#define WM_SIZE                         0x0005
-
-#define WM_ACTIVATE                     0x0006
-/*
- * WM_ACTIVATE state values
-
-#define     WA_INACTIVE     0
-#define     WA_ACTIVE       1
-#define     WA_CLICKACTIVE  2
-
-#define WM_SETFOCUS                     0x0007
-#define WM_KILLFOCUS                    0x0008
-#define WM_ENABLE                       0x000A
-#define WM_SETREDRAW                    0x000B
-#define WM_SETTEXT                      0x000C
-#define WM_GETTEXT                      0x000D
-#define WM_GETTEXTLENGTH                0x000E
-#define WM_PAINT                        0x000F
-#define WM_CLOSE                        0x0010
-#ifndef _WIN32_WCE
-#define WM_QUERYENDSESSION              0x0011
-#define WM_QUERYOPEN                    0x0013
-#define WM_ENDSESSION                   0x0016
-#endif
-#define WM_QUIT                         0x0012
-#define WM_ERASEBKGND                   0x0014
-#define WM_SYSCOLORCHANGE               0x0015
-#define WM_SHOWWINDOW                   0x0018
-#define WM_WININICHANGE                 0x001A
+Static values related to fonts:
+
+#define OUT_DEFAULT_PRECIS          0
+#define OUT_STRING_PRECIS           1
+#define OUT_CHARACTER_PRECIS        2
+#define OUT_STROKE_PRECIS           3
+#define OUT_TT_PRECIS               4
+#define OUT_DEVICE_PRECIS           5
+#define OUT_RASTER_PRECIS           6
+#define OUT_TT_ONLY_PRECIS          7
+#define OUT_OUTLINE_PRECIS          8
+#define OUT_SCREEN_OUTLINE_PRECIS   9
+#define OUT_PS_ONLY_PRECIS          10
+
+#define CLIP_DEFAULT_PRECIS     0
+#define CLIP_CHARACTER_PRECIS   1
+#define CLIP_STROKE_PRECIS      2
+#define CLIP_MASK               0xf
+#define CLIP_LH_ANGLES          (1<<4)
+#define CLIP_TT_ALWAYS          (2<<4)
+#if (_WIN32_WINNT >= _WIN32_WINNT_LONGHORN)
+#define CLIP_DFA_DISABLE        (4<<4)
+#endif // (_WIN32_WINNT >= _WIN32_WINNT_LONGHORN)
+#define CLIP_EMBEDDED           (8<<4)
+
+#define DEFAULT_QUALITY         0
+#define DRAFT_QUALITY           1
+#define PROOF_QUALITY           2
 #if(WINVER >= 0x0400)
-#define WM_SETTINGCHANGE                WM_WININICHANGE
-#endif /* WINVER >= 0x0400
+#define NONANTIALIASED_QUALITY  3
+#define ANTIALIASED_QUALITY     4
+#endif // WINVER >= 0x0400
 
-#if (NTDDI_VERSION >= NTDDI_WIN10_19H1)
-#endif // NTDDI_VERSION >= NTDDI_WIN10_19H1
-
-
-#define WM_DEVMODECHANGE                0x001B
-#define WM_ACTIVATEAPP                  0x001C
-#define WM_FONTCHANGE                   0x001D
-#define WM_TIMECHANGE                   0x001E
-#define WM_CANCELMODE                   0x001F
-#define WM_SETCURSOR                    0x0020
-#define WM_MOUSEACTIVATE                0x0021
-#define WM_CHILDACTIVATE                0x0022
-#define WM_QUEUESYNC                    0x0023
-
-#define WM_GETMINMAXINFO                0x0024
-
-#pragma region Desktop Family
-#if WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_DESKTOP)
-
-/*
- * Struct pointed to by WM_GETMINMAXINFO lParam
-
-typedef struct tagMINMAXINFO {
-    POINT ptReserved;
-    POINT ptMaxSize;
-    POINT ptMaxPosition;
-    POINT ptMinTrackSize;
-    POINT ptMaxTrackSize;
-} MINMAXINFO, *PMINMAXINFO, *LPMINMAXINFO;
-
-#endif /* WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_DESKTOP)
-#pragma endregion
-
-#define WM_PAINTICON                    0x0026
-#define WM_ICONERASEBKGND               0x0027
-#define WM_NEXTDLGCTL                   0x0028
-#define WM_SPOOLERSTATUS                0x002A
-#define WM_DRAWITEM                     0x002B
-#define WM_MEASUREITEM                  0x002C
-#define WM_DELETEITEM                   0x002D
-#define WM_VKEYTOITEM                   0x002E
-#define WM_CHARTOITEM                   0x002F
-#define WM_SETFONT                      0x0030
-#define WM_GETFONT                      0x0031
-#define WM_SETHOTKEY                    0x0032
-#define WM_GETHOTKEY                    0x0033
-#define WM_QUERYDRAGICON                0x0037
-#define WM_COMPAREITEM                  0x0039
-#if(WINVER >= 0x0500)
-#ifndef _WIN32_WCE
-#define WM_GETOBJECT                    0x003D
-#endif
-#endif /* WINVER >= 0x0500
-#define WM_COMPACTING                   0x0041
-#define WM_COMMNOTIFY                   0x0044  /* no longer suported
-#define WM_WINDOWPOSCHANGING            0x0046
-#define WM_WINDOWPOSCHANGED             0x0047
-
-#define WM_POWER                        0x0048
-/*
- * wParam for WM_POWER window message and DRV_POWER driver notification
-
-#define PWR_OK              1
-#define PWR_FAIL            (-1)
-#define PWR_SUSPENDREQUEST  1
-#define PWR_SUSPENDRESUME   2
-#define PWR_CRITICALRESUME  3
-
-#define WM_COPYDATA                     0x004A
-#define WM_CANCELJOURNAL                0x004B
-
-
-#pragma region Desktop Family
-#if WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_DESKTOP)
-
-/*
- * lParam of WM_COPYDATA message points to...
-
-typedef struct tagCOPYDATASTRUCT {
-    ULONG_PTR dwData;
-    DWORD cbData;
-    _Field_size_bytes_(cbData) PVOID lpData;
-} COPYDATASTRUCT, *PCOPYDATASTRUCT;
-
-#if(WINVER >= 0x0400)
-typedef struct tagMDINEXTMENU
-{
-    HMENU   hmenuIn;
-    HMENU   hmenuNext;
-    HWND    hwndNext;
-} MDINEXTMENU, * PMDINEXTMENU, FAR * LPMDINEXTMENU;
-#endif /* WINVER >= 0x0400
-
-#endif /* WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_DESKTOP)
-#pragma endregion
-
-
-#if(WINVER >= 0x0400)
-#define WM_NOTIFY                       0x004E
-#define WM_INPUTLANGCHANGEREQUEST       0x0050
-#define WM_INPUTLANGCHANGE              0x0051
-#define WM_TCARD                        0x0052
-#define WM_HELP                         0x0053
-#define WM_USERCHANGED                  0x0054
-#define WM_NOTIFYFORMAT                 0x0055
-
-#define NFR_ANSI                             1
-#define NFR_UNICODE                          2
-#define NF_QUERY                             3
-#define NF_REQUERY                           4
-
-#define WM_CONTEXTMENU                  0x007B
-#define WM_STYLECHANGING                0x007C
-#define WM_STYLECHANGED                 0x007D
-#define WM_DISPLAYCHANGE                0x007E
-#define WM_GETICON                      0x007F
-#define WM_SETICON                      0x0080
-#endif /* WINVER >= 0x0400
-
-#define WM_NCCREATE                     0x0081
-#define WM_NCDESTROY                    0x0082
-#define WM_NCCALCSIZE                   0x0083
-#define WM_NCHITTEST                    0x0084
-#define WM_NCPAINT                      0x0085
-#define WM_NCACTIVATE                   0x0086
-#define WM_GETDLGCODE                   0x0087
-#ifndef _WIN32_WCE
-#define WM_SYNCPAINT                    0x0088
-#endif
-#define WM_NCMOUSEMOVE                  0x00A0
-#define WM_NCLBUTTONDOWN                0x00A1
-#define WM_NCLBUTTONUP                  0x00A2
-#define WM_NCLBUTTONDBLCLK              0x00A3
-#define WM_NCRBUTTONDOWN                0x00A4
-#define WM_NCRBUTTONUP                  0x00A5
-#define WM_NCRBUTTONDBLCLK              0x00A6
-#define WM_NCMBUTTONDOWN                0x00A7
-#define WM_NCMBUTTONUP                  0x00A8
-#define WM_NCMBUTTONDBLCLK              0x00A9
-
-
-
-#if(_WIN32_WINNT >= 0x0500)
-#define WM_NCXBUTTONDOWN                0x00AB
-#define WM_NCXBUTTONUP                  0x00AC
-#define WM_NCXBUTTONDBLCLK              0x00AD
-#endif /* _WIN32_WINNT >= 0x0500
-
-
-#if(_WIN32_WINNT >= 0x0501)
-#define WM_INPUT_DEVICE_CHANGE          0x00FE
-#endif /* _WIN32_WINNT >= 0x0501
-
-#if(_WIN32_WINNT >= 0x0501)
-#define WM_INPUT                        0x00FF
-#endif /* _WIN32_WINNT >= 0x0501
-
-#define WM_KEYFIRST                     0x0100
-#define WM_KEYDOWN                      0x0100
-#define WM_KEYUP                        0x0101
-#define WM_CHAR                         0x0102
-#define WM_DEADCHAR                     0x0103
-#define WM_SYSKEYDOWN                   0x0104
-#define WM_SYSKEYUP                     0x0105
-#define WM_SYSCHAR                      0x0106
-#define WM_SYSDEADCHAR                  0x0107
-#if(_WIN32_WINNT >= 0x0501)
-#define WM_UNICHAR                      0x0109
-#define WM_KEYLAST                      0x0109
-#define UNICODE_NOCHAR                  0xFFFF
-#else
-#define WM_KEYLAST                      0x0108
-#endif /* _WIN32_WINNT >= 0x0501
-
-#if(WINVER >= 0x0400)
-#define WM_IME_STARTCOMPOSITION         0x010D
-#define WM_IME_ENDCOMPOSITION           0x010E
-#define WM_IME_COMPOSITION              0x010F
-#define WM_IME_KEYLAST                  0x010F
-#endif /* WINVER >= 0x0400
-
-#define WM_INITDIALOG                   0x0110
-#define WM_COMMAND                      0x0111
-#define WM_SYSCOMMAND                   0x0112
-#define WM_TIMER                        0x0113
-#define WM_HSCROLL                      0x0114
-#define WM_VSCROLL                      0x0115
-#define WM_INITMENU                     0x0116
-#define WM_INITMENUPOPUP                0x0117
-#if(WINVER >= 0x0601)
-#define WM_GESTURE                      0x0119
-#define WM_GESTURENOTIFY                0x011A
-#endif /* WINVER >= 0x0601
-#define WM_MENUSELECT                   0x011F
-#define WM_MENUCHAR                     0x0120
-#define WM_ENTERIDLE                    0x0121
-#if(WINVER >= 0x0500)
-#ifndef _WIN32_WCE
-#define WM_MENURBUTTONUP                0x0122
-#define WM_MENUDRAG                     0x0123
-#define WM_MENUGETOBJECT                0x0124
-#define WM_UNINITMENUPOPUP              0x0125
-#define WM_MENUCOMMAND                  0x0126
-
-#ifndef _WIN32_WCE
-#if(_WIN32_WINNT >= 0x0500)
-#define WM_CHANGEUISTATE                0x0127
-#define WM_UPDATEUISTATE                0x0128
-#define WM_QUERYUISTATE                 0x0129
-
-/*
- * LOWORD(wParam) values in WM_*UISTATE*
-
-#define UIS_SET                         1
-#define UIS_CLEAR                       2
-#define UIS_INITIALIZE                  3
-
-/*
- * HIWORD(wParam) values in WM_*UISTATE*
-
-#define UISF_HIDEFOCUS                  0x1
-#define UISF_HIDEACCEL                  0x2
-#if(_WIN32_WINNT >= 0x0501)
-#define UISF_ACTIVE                     0x4
-#endif /* _WIN32_WINNT >= 0x0501
-#endif /* _WIN32_WINNT >= 0x0500
+#if (_WIN32_WINNT >= _WIN32_WINNT_WINXP)
+#define CLEARTYPE_QUALITY       5
+#define CLEARTYPE_NATURAL_QUALITY       6
 #endif
 
-#endif
-#endif /* WINVER >= 0x0500
-
-#define WM_CTLCOLORMSGBOX               0x0132
-#define WM_CTLCOLOREDIT                 0x0133
-#define WM_CTLCOLORLISTBOX              0x0134
-#define WM_CTLCOLORBTN                  0x0135
-#define WM_CTLCOLORDLG                  0x0136
-#define WM_CTLCOLORSCROLLBAR            0x0137
-#define WM_CTLCOLORSTATIC               0x0138
-#define MN_GETHMENU                     0x01E1
-
-#define WM_MOUSEFIRST                   0x0200
-#define WM_MOUSEMOVE                    0x0200
-#define WM_LBUTTONDOWN                  0x0201
-#define WM_LBUTTONUP                    0x0202
-#define WM_LBUTTONDBLCLK                0x0203
-#define WM_RBUTTONDOWN                  0x0204
-#define WM_RBUTTONUP                    0x0205
-#define WM_RBUTTONDBLCLK                0x0206
-#define WM_MBUTTONDOWN                  0x0207
-#define WM_MBUTTONUP                    0x0208
-#define WM_MBUTTONDBLCLK                0x0209
-#if (_WIN32_WINNT >= 0x0400) || (_WIN32_WINDOWS > 0x0400)
-#define WM_MOUSEWHEEL                   0x020A
-#endif
-#if (_WIN32_WINNT >= 0x0500)
-#define WM_XBUTTONDOWN                  0x020B
-#define WM_XBUTTONUP                    0x020C
-#define WM_XBUTTONDBLCLK                0x020D
-#endif
-#if (_WIN32_WINNT >= 0x0600)
-#define WM_MOUSEHWHEEL                  0x020E
-#endif
-
-#if (_WIN32_WINNT >= 0x0600)
-#define WM_MOUSELAST                    0x020E
-#elif (_WIN32_WINNT >= 0x0500)
-#define WM_MOUSELAST                    0x020D
-#elif (_WIN32_WINNT >= 0x0400) || (_WIN32_WINDOWS > 0x0400)
-#define WM_MOUSELAST                    0x020A
-#else
-#define WM_MOUSELAST                    0x0209
-#endif /* (_WIN32_WINNT >= 0x0600)
-
-
-#if(_WIN32_WINNT >= 0x0400)
-/* Value for rolling one detent
-#define WHEEL_DELTA                     120
-#define GET_WHEEL_DELTA_WPARAM(wParam)  ((short)HIWORD(wParam))
-
-/* Setting to scroll one page for SPI_GET/SETWHEELSCROLLLINES
-#define WHEEL_PAGESCROLL                (UINT_MAX)
-#endif /* _WIN32_WINNT >= 0x0400
-
-#if(_WIN32_WINNT >= 0x0500)
-#define GET_KEYSTATE_WPARAM(wParam)     (LOWORD(wParam))
-#define GET_NCHITTEST_WPARAM(wParam)    ((short)LOWORD(wParam))
-#define GET_XBUTTON_WPARAM(wParam)      (HIWORD(wParam))
-
-/* XButton values are WORD flags
-#define XBUTTON1      0x0001
-#define XBUTTON2      0x0002
-/* Were there to be an XBUTTON3, its value would be 0x0004
-#endif /* _WIN32_WINNT >= 0x0500
-
-#define WM_PARENTNOTIFY                 0x0210
-#define WM_ENTERMENULOOP                0x0211
-#define WM_EXITMENULOOP                 0x0212
-
+#define DEFAULT_PITCH           0
+#define FIXED_PITCH             1
+#define VARIABLE_PITCH          2
 #if(WINVER >= 0x0400)
-#define WM_NEXTMENU                     0x0213
-#define WM_SIZING                       0x0214
-#define WM_CAPTURECHANGED               0x0215
-#define WM_MOVING                       0x0216
-#endif /* WINVER >= 0x0400
+#define MONO_FONT               8
+#endif // WINVER >= 0x0400
 
+#define ANSI_CHARSET            0
+#define DEFAULT_CHARSET         1
+#define SYMBOL_CHARSET          2
+#define SHIFTJIS_CHARSET        128
+#define HANGEUL_CHARSET         129
+#define HANGUL_CHARSET          129
+#define GB2312_CHARSET          134
+#define CHINESEBIG5_CHARSET     136
+#define OEM_CHARSET             255
 #if(WINVER >= 0x0400)
+#define JOHAB_CHARSET           130
+#define HEBREW_CHARSET          177
+#define ARABIC_CHARSET          178
+#define GREEK_CHARSET           161
+#define TURKISH_CHARSET         162
+#define VIETNAMESE_CHARSET      163
+#define THAI_CHARSET            222
+#define EASTEUROPE_CHARSET      238
+#define RUSSIAN_CHARSET         204
 
+#define MAC_CHARSET             77
+#define BALTIC_CHARSET          186
 
-#define WM_POWERBROADCAST               0x0218
+#define FS_LATIN1               0x00000001L
+#define FS_LATIN2               0x00000002L
+#define FS_CYRILLIC             0x00000004L
+#define FS_GREEK                0x00000008L
+#define FS_TURKISH              0x00000010L
+#define FS_HEBREW               0x00000020L
+#define FS_ARABIC               0x00000040L
+#define FS_BALTIC               0x00000080L
+#define FS_VIETNAMESE           0x00000100L
+#define FS_THAI                 0x00010000L
+#define FS_JISJAPAN             0x00020000L
+#define FS_CHINESESIMP          0x00040000L
+#define FS_WANSUNG              0x00080000L
+#define FS_CHINESETRAD          0x00100000L
+#define FS_JOHAB                0x00200000L
+#define FS_SYMBOL               0x80000000L
+#endif // WINVER >= 0x0400
 
-#ifndef _WIN32_WCE
-#define PBT_APMQUERYSUSPEND             0x0000
-#define PBT_APMQUERYSTANDBY             0x0001
+// Font Families
+#define FF_DONTCARE         0x00 (0)    /* Don't care or don't know.
+#define FF_ROMAN            0x10 (16)   /* Variable stroke width, serifed.
+                                        /* Times Roman, Century Schoolbook, etc.
+#define FF_SWISS            0x20 (32)   /* Variable stroke width, sans-serifed.
+                                        /* Helvetica, Swiss, etc.
+#define FF_MODERN           0x30 (48)   /* Constant stroke width, serifed or sans-serifed.
+                                        /* Pica, Elite, Courier, etc.
+#define FF_SCRIPT           0x40 (64)   /* Cursive, etc.
+#define FF_DECORATIVE       0x50 (80)   /* Old English, etc.
 
-#define PBT_APMQUERYSUSPENDFAILED       0x0002
-#define PBT_APMQUERYSTANDBYFAILED       0x0003
+/* Font Weights
+#define FW_DONTCARE         0
+#define FW_THIN             100
+#define FW_EXTRALIGHT       200
+#define FW_LIGHT            300
+#define FW_NORMAL           400
+#define FW_MEDIUM           500
+#define FW_SEMIBOLD         600
+#define FW_BOLD             700
+#define FW_EXTRABOLD        800
+#define FW_HEAVY            900
 
-#define PBT_APMSUSPEND                  0x0004
-#define PBT_APMSTANDBY                  0x0005
+#define FW_ULTRALIGHT       FW_EXTRALIGHT
+#define FW_REGULAR          FW_NORMAL
+#define FW_DEMIBOLD         FW_SEMIBOLD
+#define FW_ULTRABOLD        FW_EXTRABOLD
+#define FW_BLACK            FW_HEAVY
 
-#define PBT_APMRESUMECRITICAL           0x0006
-#define PBT_APMRESUMESUSPEND            0x0007
-#define PBT_APMRESUMESTANDBY            0x0008
+; https://learn.microsoft.com/en-us/previous-versions/dd162618(v=vs.85)
+#define RASTER_FONTTYPE     0x0001
+#define DEVICE_FONTTYPE     0x0002
+#define TRUETYPE_FONTTYPE   0x0004
 
-#define PBTF_APMRESUMEFROMFAILURE       0x00000001
-
-#define PBT_APMBATTERYLOW               0x0009
-#define PBT_APMPOWERSTATUSCHANGE        0x000A
-
-#define PBT_APMOEMEVENT                 0x000B
-
-
-#define PBT_APMRESUMEAUTOMATIC          0x0012
-#if (_WIN32_WINNT >= 0x0502)
-#ifndef PBT_POWERSETTINGCHANGE
-#define PBT_POWERSETTINGCHANGE          0x8013
-
-#pragma region Desktop Family
-#if WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_DESKTOP)
-
-typedef struct {
-    GUID PowerSetting;
-    DWORD DataLength;
-    UCHAR Data[1];
-} POWERBROADCAST_SETTING, *PPOWERBROADCAST_SETTING;
-
-
-#endif /* WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_DESKTOP)
-#pragma endregion
-
-#endif // PBT_POWERSETTINGCHANGE
-
-#endif // (_WIN32_WINNT >= 0x0502)
-#endif
-
-#endif /* WINVER >= 0x0400
-
-#if(WINVER >= 0x0400)
-#define WM_DEVICECHANGE                 0x0219
-#endif /* WINVER >= 0x0400
-
-#define WM_MDICREATE                    0x0220
-#define WM_MDIDESTROY                   0x0221
-#define WM_MDIACTIVATE                  0x0222
-#define WM_MDIRESTORE                   0x0223
-#define WM_MDINEXT                      0x0224
-#define WM_MDIMAXIMIZE                  0x0225
-#define WM_MDITILE                      0x0226
-#define WM_MDICASCADE                   0x0227
-#define WM_MDIICONARRANGE               0x0228
-#define WM_MDIGETACTIVE                 0x0229
-
-
-#define WM_MDISETMENU                   0x0230
-#define WM_ENTERSIZEMOVE                0x0231
-#define WM_EXITSIZEMOVE                 0x0232
-#define WM_DROPFILES                    0x0233
-#define WM_MDIREFRESHMENU               0x0234
-
-#if(WINVER >= 0x0602)
-#define WM_POINTERDEVICECHANGE          0x238
-#define WM_POINTERDEVICEINRANGE         0x239
-#define WM_POINTERDEVICEOUTOFRANGE      0x23A
-#endif /* WINVER >= 0x0602
-
-// TODO(47499024): Make public when Feature_TouchpadPublicApis is enabled
-
-#if(WINVER >= 0x0601)
-#define WM_TOUCH                        0x0240
-#endif /* WINVER >= 0x0601
-
-#if(WINVER >= 0x0602)
-#define WM_NCPOINTERUPDATE              0x0241
-#define WM_NCPOINTERDOWN                0x0242
-#define WM_NCPOINTERUP                  0x0243
-#define WM_POINTERUPDATE                0x0245
-#define WM_POINTERDOWN                  0x0246
-#define WM_POINTERUP                    0x0247
-#define WM_POINTERENTER                 0x0249
-#define WM_POINTERLEAVE                 0x024A
-#define WM_POINTERACTIVATE              0x024B
-#define WM_POINTERCAPTURECHANGED        0x024C
-#define WM_TOUCHHITTESTING              0x024D
-#define WM_POINTERWHEEL                 0x024E
-#define WM_POINTERHWHEEL                0x024F
-#define DM_POINTERHITTEST               0x0250
-#define WM_POINTERROUTEDTO              0x0251
-#define WM_POINTERROUTEDAWAY            0x0252
-#define WM_POINTERROUTEDRELEASED        0x0253
-#endif /* WINVER >= 0x0602
-
-
-#if(WINVER >= 0x0400)
-#define WM_IME_SETCONTEXT               0x0281
-#define WM_IME_NOTIFY                   0x0282
-#define WM_IME_CONTROL                  0x0283
-#define WM_IME_COMPOSITIONFULL          0x0284
-#define WM_IME_SELECT                   0x0285
-#define WM_IME_CHAR                     0x0286
-#endif /* WINVER >= 0x0400
-#if(WINVER >= 0x0500)
-#define WM_IME_REQUEST                  0x0288
-#endif /* WINVER >= 0x0500
-#if(WINVER >= 0x0400)
-#define WM_IME_KEYDOWN                  0x0290
-#define WM_IME_KEYUP                    0x0291
-#endif /* WINVER >= 0x0400
-
-#if((_WIN32_WINNT >= 0x0400) || (WINVER >= 0x0500))
-#define WM_MOUSEHOVER                   0x02A1
-#define WM_MOUSELEAVE                   0x02A3
-#endif
-#if(WINVER >= 0x0500)
-#define WM_NCMOUSEHOVER                 0x02A0
-#define WM_NCMOUSELEAVE                 0x02A2
-#endif /* WINVER >= 0x0500
-
-#if(_WIN32_WINNT >= 0x0501)
-#define WM_WTSSESSION_CHANGE            0x02B1
-
-#define WM_TABLET_FIRST                 0x02c0
-#define WM_TABLET_LAST                  0x02df
-#endif /* _WIN32_WINNT >= 0x0501
-
-#if(WINVER >= 0x0601)
-#define WM_DPICHANGED                   0x02E0
-#endif /* WINVER >= 0x0601
-#if(WINVER >= 0x0605)
-#define WM_DPICHANGED_BEFOREPARENT      0x02E2
-#define WM_DPICHANGED_AFTERPARENT       0x02E3
-#define WM_GETDPISCALEDSIZE             0x02E4
-#endif /* WINVER >= 0x0605
-
-#define WM_CUT                          0x0300
-#define WM_COPY                         0x0301
-#define WM_PASTE                        0x0302
-#define WM_CLEAR                        0x0303
-#define WM_UNDO                         0x0304
-#define WM_RENDERFORMAT                 0x0305
-#define WM_RENDERALLFORMATS             0x0306
-#define WM_DESTROYCLIPBOARD             0x0307
-#define WM_DRAWCLIPBOARD                0x0308
-#define WM_PAINTCLIPBOARD               0x0309
-#define WM_VSCROLLCLIPBOARD             0x030A
-#define WM_SIZECLIPBOARD                0x030B
-#define WM_ASKCBFORMATNAME              0x030C
-#define WM_CHANGECBCHAIN                0x030D
-#define WM_HSCROLLCLIPBOARD             0x030E
-#define WM_QUERYNEWPALETTE              0x030F
-#define WM_PALETTEISCHANGING            0x0310
-#define WM_PALETTECHANGED               0x0311
-#define WM_HOTKEY                       0x0312
-
-#if(WINVER >= 0x0400)
-#define WM_PRINT                        0x0317
-#define WM_PRINTCLIENT                  0x0318
-#endif /* WINVER >= 0x0400
-
-#if(_WIN32_WINNT >= 0x0500)
-#define WM_APPCOMMAND                   0x0319
-#endif /* _WIN32_WINNT >= 0x0500
-
-#if(_WIN32_WINNT >= 0x0501)
-#define WM_THEMECHANGED                 0x031A
-#endif /* _WIN32_WINNT >= 0x0501
-
-
-#if(_WIN32_WINNT >= 0x0501)
-#define WM_CLIPBOARDUPDATE              0x031D
-#endif /* _WIN32_WINNT >= 0x0501
-
-#if(_WIN32_WINNT >= 0x0600)
-#define WM_DWMCOMPOSITIONCHANGED        0x031E
-#define WM_DWMNCRENDERINGCHANGED        0x031F
-#define WM_DWMCOLORIZATIONCOLORCHANGED  0x0320
-#define WM_DWMWINDOWMAXIMIZEDCHANGE     0x0321
-#endif /* _WIN32_WINNT >= 0x0600
-
-#if(_WIN32_WINNT >= 0x0601)
-#define WM_DWMSENDICONICTHUMBNAIL           0x0323
-#define WM_DWMSENDICONICLIVEPREVIEWBITMAP   0x0326
-#endif /* _WIN32_WINNT >= 0x0601
-
-
-#if(WINVER >= 0x0600)
-#define WM_GETTITLEBARINFOEX            0x033F
-#endif /* WINVER >= 0x0600
-
-#if(WINVER >= 0x0400)
-#endif /* WINVER >= 0x0400
-
-
-#if(WINVER >= 0x0400)
-#define WM_HANDHELDFIRST                0x0358
-#define WM_HANDHELDLAST                 0x035F
-
-#define WM_AFXFIRST                     0x0360
-#define WM_AFXLAST                      0x037F
-#endif /* WINVER >= 0x0400
-
-#define WM_PENWINFIRST                  0x0380
-#define WM_PENWINLAST                   0x038F
-
-
-#if(WINVER >= 0x0400)
-#define WM_APP                          0x8000
-#endif /* WINVER >= 0x0400
-
-
-/*
- * NOTE: All Message Numbers below 0x0400 are RESERVED.
- *
- * Private Window Messages Start Here:
-
-#define WM_USER                         0x0400
-
-#if(WINVER >= 0x0400)
-
-/*  wParam for WM_SIZING message
-#define WMSZ_LEFT           1
-#define WMSZ_RIGHT          2
-#define WMSZ_TOP            3
-#define WMSZ_TOPLEFT        4
-#define WMSZ_TOPRIGHT       5
-#define WMSZ_BOTTOM         6
-#define WMSZ_BOTTOMLEFT     7
-#define WMSZ_BOTTOMRIGHT    8
-#endif /* WINVER >= 0x0400
