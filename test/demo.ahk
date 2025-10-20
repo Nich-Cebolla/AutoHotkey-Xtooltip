@@ -9,7 +9,6 @@ class demo {
         ; Create a theme
         theme := XttTheme("MyTheme", {
             BackColor: 0
-          , Bold: true
           , FaceName: "Segoe Ui"
           , FontSize: 12
           , Italic: true
@@ -17,6 +16,7 @@ class demo {
           , Margin: XttRect.Margin(3)
           , MaxWidth: 250
           , TextColor: XttRgb(0, 255, 255)
+          , Weight: 700
         })
         ; Create an Xtooltip, passing the theme as an option
         ; TTS_ALWAYSTIP makes it so the tooltips will appear whether or not the window is the active window.
@@ -75,7 +75,6 @@ class demo {
         ; Create a light mode version
         themeRedLight := XttTheme("red light", {
             BackColor: XttRgb(255, 255, 255)
-          , Bold: true
           , FaceName: "Segoe Ui"
           , FontSize: 12
           , Italic: true
@@ -83,6 +82,7 @@ class demo {
           , Margin: XttRect.Margin(3)
           , MaxWidth: 250
           , TextColor: XttRgb(255, 0, 0)
+          , Weight: 700
         })
         ; Add the light mode to the group
         themeGroup.ThemeAdd(themeRedLight, true)

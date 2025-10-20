@@ -40,7 +40,6 @@ does not provide tools for customizing the window or its behavior.
 - Customize all available attributes:
   - Background color
   - Font
-    - Bold
     - Escapement
     - Face name
     - Font size
@@ -61,6 +60,13 @@ and you'll be ready to go.
 Be sure to check out the sandbox script test\sandbox.ahk that allows you to adjust the options
 and see what they look like immediately, and the demo script test\demo.ahk which runs the snippets
 in [Quick start](#quick-start) section.
+
+This is the sandbox.
+
+<img src="images\sandbox.png" alt="Xtooltip sandbox">
+<!--
+![Xtooltip sandbox](images\sandbox.png)
+-->
 
 # AutoHotkey.com link
 
@@ -90,7 +96,6 @@ xcopy C:\users\you\path\to\AutoHotkey-Xtooltip\src\Xtooltip.ahk C:\users\you\doc
 ```ahk
 theme := XttTheme({
     BackColor: 0
-  , Bold: true
   , FaceName: "Segoe Ui"
   , FontSize: 12
   , Italic: true
@@ -98,6 +103,7 @@ theme := XttTheme({
   , Margin: XttRect.Margin(3)
   , MaxWidth: 250
   , TextColor: XttRgb(0, 255, 255)
+  , Weight: 700
 })
 ```
 
@@ -260,7 +266,6 @@ The following are the available options.
  - BackColor
  - Font : `Options.Font` can be an `XttLogfont` object, or include any of the following
    properties on `Options`.
-   - Bold
    - Escapement
    - FaceName
    - FontSize
@@ -304,21 +309,21 @@ Xtooltip.RegisterAllCollections()
 ; Create two themes
 darkMode := XttTheme("dark", {
     BackColor: 0
-  , Bold: true
   , FaceName: "Segoe Ui"
   , FontSize: 12
   , Quality: 5
   , Margin: XttRect.Margin(3)
   , TextColor: XttRgb(255, 255, 230)
+  , Weight: 700
 })
 lightMode := XttTheme("light", {
     BackColor: XttRgb(255, 255, 240)
-  , Bold: true
   , FaceName: "Segoe Ui"
   , FontSize: 12
   , Quality: 5
   , Margin: XttRect.Margin(3)
   , TextColor: 0
+  , Weight: 700
 })
 ; Create a theme group object
 themeGroup := XttThemeGroup("MyThemeGroup", [ darkMode, lightMode ])

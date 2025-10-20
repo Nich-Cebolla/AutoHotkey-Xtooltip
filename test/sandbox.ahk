@@ -20,7 +20,7 @@ class Demo {
         ; create a theme for the Xtooltip
         theme := XttTheme(,
             {
-                BackColor: 0x000000
+                BackColor: XttRgb(255, 255, 255)
               , FontSize: 11
               , MarginL: 2
               , MarginT: 2
@@ -28,7 +28,7 @@ class Demo {
               , MarginB: 2
               , Name: 'Buttons'
               , Quality: 5
-              , TextColor: XttRgb(255, 0, 0)
+              , TextColor: XttRgb(200, 50, 100)
               , FaceName: this.FaceName
             }
         )

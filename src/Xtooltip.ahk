@@ -124,6 +124,50 @@ class Xtooltip extends Xtooltip.Base {
     /**
      * @param {ToolInfo.Params|Object} tiParams - Either a {@link XttToolInfo.Params} object, or an object
      * that will be pass to {@link XttToolInfo.Params}.
+     * If `Options.Theme` or `Options.ThemeGroup` are set, all other customization options are ignored.
+     * `Options.Theme` supercedes `Options.ThemeGroup`.
+     *
+     * @param {Integer} [Options.AddExStyle] - Extended window style flags to use in addition to the default `Options.ExStyle`.
+     * @param {Integer} [Options.AddStyle] - Window style flags to use in addition to the default `Options.Style`.
+     * @param {Boolean} [Options.AlwaysOnTop = true] - If true, the WS_EX_TOPMOST flag is added to the extended style flags.
+     * @param {Integer} [Options.BackColor] - The COLORREF representing the background color. Use `XttRgb(r, g, b)` to
+     * convert RGB to COLORREF.
+     * @param {Float} [Options.Escapement = 0] - The font escapement.
+     * @param {Integer} [Options.ExStyle = WS_EX_NOACTIVATE] - Extended window style flags.
+     * @param {String} [Options.FaceName] - The font name to use.
+     * @param {Float} [Options.FontSize] - The font size in points (`Round(LogfontObj.Height * -72 / LogfontObj.Dpi, 2)`).
+     * @param {Integer} [Options.HwndParent = A_ScriptHwnd] - The parent window's handle.
+     * @param {Integer} [Options.Icon = 0] - The icon to display next to the title.
+     * @param {Integer} [Options.Instance = 0] - The value to pass to `hInstance` parameter of `CreateWindowExW`. Leave this 0.
+     * @param {Integer} [Options.Italic = 0] - Set to 1 to italicize the text.
+     * @param {Integer} [Options.MarginB] - The bottom margin padding in pixels.
+     * @param {Integer} [Options.MarginL] - The left margin padding in pixels.
+     * @param {Integer} [Options.MarginR] - The right margin padding in pixels.
+     * @param {Integer} [Options.Margins] - A single integer representing the number of pixels to apply to all four margins.
+     * Use this instead of setting each individually. If you include one or more of the individual margin options
+     * in addition to this one, the individual option will supervede `Options.Margins` for that attribute.
+     * @param {Integer} [Options.MarginT] - The top margin padding in pixels.
+     * @param {Integer} [Options.MaxWidth] - The value to set as the tooltip window's maximum width. See
+     * [Microsoft's documentation](https://learn.microsoft.com/en-us/windows/win32/controls/ttm-setmaxtipwidth)
+     * about the maximum width.
+     * @param {Integer} [Options.Menu = 0] - The value to pass to the `hMenu` parameter of `CreateWindowExW`.
+     * Leave this 0.
+     * @param {String} [Options.Name] - A name to associate with the `Xtooltip` object. See [Collections](#collections).
+     * @param {Integer} [Options.Param = 0] - The value to pass to the `lParam` parameter of `CreateWindowExW`.
+     * Leave this 0.
+     * @param {Integer} [Options.Quality = 5] - The font quality.
+     * @param {Integer} [Options.Strikeout = 0] - Set to 1 to strikeout the text.
+     * @param {Integer} [Options.Style = WS_BORDER | WS_POPUP | TTS_NOPREFIX] - The window style flags.
+     * @param {Integer} [Options.TextColor] - The COLORREF representing the text color. Use `XttRgb(r, g, b)` to
+     * convert RGB to COLORREF.
+     * @param {XttTheme} [Options.Theme] - The `XttTheme` object to apply to the tooltip. See [Themes](#themes).
+     * @param {XttThemeGroup} [Options.ThemeGroup] - The `XttThemeGroup` object to which to add the `Xtooltip` object.
+     * See [Theme groups](#theme-groups).
+     * @param {String} [Options.Title] - The title to display in the tooltip window.
+     * @param {Integer} [Options.Underline = 0] - Set to 1 to underline the text.
+     * @param {Integer} [Options.Weight = 400] - The font weight.
+     * @param {Integer} [Options.WindowName = 0] - The pointer to a null-terminated string that is
+     * passed to `lpWindowName` parameter of `CreateWindowExW`. Leave this 0.
      */
     __New(Options?) {
         if IsSet(Options) {
