@@ -234,13 +234,16 @@ the logic needed to keep your code organized and concise.
 
 - Create a theme
 
+Pass an options object to the constructor to get a theme object.
+
 ```ahk
 theme := XttTheme({ ... })
 ```
 
-Pass an options object to the constructor to get a theme object.
-
 - Apply the theme to an existing tooltip
+
+Applying the theme activates the theme's options. If any style options are absent from the theme object,
+the `Xtooltip` object will retain its current values for those options.
 
 ```ahk
 xtt := Xtooltip()
@@ -248,17 +251,14 @@ theme := XttTheme()
 xtt.Theme := theme
 ```
 
-Applying the theme activates the theme's options. If any style options are absent from the theme object,
-the `Xtooltip` object will retain its current values for those options.
-
 - Apply the theme to a new tooltip
+
+Pass the `XttTheme` object as `Options.Theme`.
 
 ```ahk
 theme := XttTheme()
 xtt := Xtooltip({ Theme: theme })
 ```
-
-Pass the `XttTheme` object as `Options.Theme`.
 
 ## Theme options
 
