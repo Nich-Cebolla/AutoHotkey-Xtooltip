@@ -5,7 +5,6 @@
 class Xtooltip extends Xtooltip.Base {
     static __New() {
         this.DeleteProp('__New')
-        XttDeclareConstants()
         ; Store the tooltip system class name as a buffer
         className := 'tooltips_class32'
         this.ClassName := Buffer(StrPut(className, XTT_DEFAULT_ENCODING))
@@ -123,8 +122,8 @@ class Xtooltip extends Xtooltip.Base {
         this.XttCollection := ''
     }
     /**
-     * @param {ToolInfo.Params|Object} TiParams - Either a {@link TtToolInfo.Params} object, or an object
-     * that will be pass to {@link TtToolInfo.Params}.
+     * @param {ToolInfo.Params|Object} tiParams - Either a {@link XttToolInfo.Params} object, or an object
+     * that will be pass to {@link XttToolInfo.Params}.
      */
     __New(Options?) {
         if IsSet(Options) {
@@ -133,30 +132,21 @@ class Xtooltip extends Xtooltip.Base {
             }
             Options.DefineProp('__Get', { Call: _Get.Bind(Xtooltip.Options.Default) })
             if Options.AlwaysOnTop {
-                if Options.Style {
-                    style := Options.Style | TTS_ALWAYSTIP
-                } else {
-                    style := TTS_ALWAYSTIP
-                }
-                if Options.ExStyle {
-                    exStyle := Options.ExStyle | WS_EX_TOPMOST
-                } else {
-                    exStyle := WS_EX_TOPMOST
-                }
+                exStyle := Options.AddExStyle ? Options.AddExStyle | Options.ExStyle | WS_EX_TOPMOST : Options.ExStyle | WS_EX_TOPMOST
             } else {
-                style := Options.Style
-                exStyle := Options.ExStyle
+                exStyle := Options.AddExStyle ? Options.AddExStyle | Options.ExStyle : Options.ExStyle
             }
+            style := Options.AddStyle ? Options.AddStyle | Options.Style : Options.Style
             hwnd := this.Hwnd := DllCall(
                 'CreateWindowExW'
               , 'uint', exStyle             ; dwExStyle
               , 'ptr', Xtooltip.ClassName   ; lpClassName
               , 'ptr', Options.WindowName   ; lpWindowName
               , 'uint', style               ; dwStyle
-              , 'int', Options.X            ; X
-              , 'int', Options.Y            ; Y
-              , 'int', Options.W            ; nWidth
-              , 'int', Options.H            ; nHeight
+              , 'int', 0                    ; X
+              , 'int', 0                    ; Y
+              , 'int', 0                    ; nWidth
+              , 'int', 0                    ; nHeight
               , 'ptr', Options.HwndParent   ; hWndParent
               , 'ptr', Options.Menu         ; hMenu
               , 'ptr', Options.Instance     ; hInstance
@@ -292,46 +282,56 @@ class Xtooltip extends Xtooltip.Base {
         return SendMessage(TTM_ACTIVATE, Value, 0, this.Hwnd)
     }
     /**
-     * @description - Adds a {@link TtToolInfo.Params} object to the collection set on property {@link Xtooltip#Tools}.
-     * Sends the TTM_ADDTOOLW message to the tooltip.
+     * @description - Adds a {@link XttToolInfo.Params} object to the collection set on property
+     * {@link Xtooltip#Tools}.
      *
-     * Only one tool with TTF_TRACK can be used with a tooltip. If `TiParams` has the TTF_TRACK flag
+     * Sends the {@link https://learn.microsoft.com/en-us/windows/win32/controls/ttm-addtool TTM_ADDTOOLW}
+     * message to the tooltip.
+     *
+     * Only one tool with TTF_TRACK can be used with a tooltip. If `tiParams` has the TTF_TRACK flag
      * and property {@link Xtooltip#HasTrackingTool} != 0, an error is thrown.
      *
-     * @param {ToolInfo.Params|Object} TiParams - Either a {@link TtToolInfo.Params} object, or an object
-     * with property:value pairs specifying the values of the members of the TTTOOLINFO structure
-     * to which the object will be associated. See {@link ToolInfo.Params} and {@link ToolInfo.Params#__New}
-     * for more information. If `TiParams` is not a {@link TtToolInfo.Params} object, it will be passed to
+     * @param {String} Key - The "key" to associate with the {@link XttToolInfo.Params} object.
+     *
+     * @param {ToolInfo.Params|Object} tiParams - Either a {@link XttToolInfo.Params} object, or an object
+     * with property : value pairs specifying the values of the members of the TTTOOLINFO structure
+     * to which the object will be associated. See {@link ToolInfo.Params.Prototype.__New}
+     * for more information. If `tiParams` is not a {@link XttToolInfo.Params} object, it will be passed to
      * {@link ToolInfo.Params.Prototype.__New}.
+     *
      * @param {String|Buffer} Text - The string that the tooltip will display, or a buffer containing
      * the string.
-     * @param {String} Key - The "key" to associate with the {@link TtToolInfo.Params} object.
+     *
+     * @param {Boolean} [Activate = true] - If true, TTM_ACTIVATE is sent.
      *
      * @throws {Error} - "Only one tracking tool can be added to an Xtooltip at a time."
      */
-    AddTool(TiParams, Text, Key, Activate := true) {
-        if not TiParams is TtToolInfo.Params {
-            TiParams := TtToolInfo.Params(this, TiParams)
+    AddTool(Key, tiParams, Text, Activate := true) {
+        if not tiParams is XttToolInfo.Params {
+            tiParams.StrLen := StrLen(Text)
+            tiParams := XttToolInfo.Params(this.Hwnd, tiParams)
         }
-        if HasProp(TiParams, 'Flags') && TiParams.Flags & TTF_TRACK {
+        if HasProp(tiParams, 'uFlags') && tiParams.uFlags & TTF_TRACK {
             if this.HasTrackingTool {
                 XttErrors.ThrowTrackingError()
             } else {
                 this.HasTrackingTool := 1
             }
         }
-        this.Tools.Set(Key, TiParams)
-        ti := TiParams(this)
-        ti.Text := Text
+        this.Tools.Set(Key, tiParams)
+        ti := tiParams()
+        ti.lpszText := Text
         SendMessage(TTM_ADDTOOLW, 0, ti.Ptr, this.Hwnd)
-        SendMessage(TTM_ACTIVATE, true, 0, this.hwnd)
+        if Activate {
+            SendMessage(TTM_ACTIVATE, true, 0, this.hwnd)
+        }
     }
     /**
-     * @description - Creates a {@link TtToolInfo.Params} object with the needed values to associate
+     * @description - Creates a {@link XttToolInfo.Params} object with the needed values to associate
      * a tooltip with a `Gui.Control` object. Whenever the user's mouse cursor hovers over the
      * control, the tooltip will display after a short delay. When the cursor leaves the control's
      * area, the tooltip will hide after a short delay.
-     * @param {String} Key - The "key" to associate with the {@link TtToolInfo.Params} object.
+     * @param {String} Key - The "key" to associate with the {@link XttToolInfo.Params} object.
      * @param {String|Buffer} Text - The string that the tooltip will display, or a buffer containing
      * the string.
      * @param {Gui.Control} Ctrl - The `Gui.Control` object.
@@ -341,137 +341,183 @@ class Xtooltip extends Xtooltip.Base {
         return this.__AddTool(
             Key
           , {
-                ttHwnd: this.Hwnd
-              , Hwnd: Ctrl.Gui.Hwnd
-              , Id: Ctrl.Hwnd
-              , Flags: TTF_IDISHWND | TTF_SUBCLASS
+                HwndXtt: this.Hwnd
+              , hwnd: Ctrl.Gui.Hwnd
+              , uId: Ctrl.Hwnd
+              , uFlags: TTF_IDISHWND | TTF_SUBCLASS
+              , StrLen: StrLen(Text)
             }
           , Text
         )
     }
     /**
-     * @description - Creates a {@link TtToolInfo.Params} object with the needed values to associate
+     * @description - Creates a {@link XttToolInfo.Params} object with the needed values to associate
      * a tooltip with a `Gui.Control`'s client area. Whenever the user's mouse cursor enters into
      * the area, the tooltip will display after a short delay. When the cursor leaves the area, the
      * tooltip will hide after a short delay.
-     * @param {String} Key - The "key" to associate with the {@link TtToolInfo.Params} object.
+     * @param {String} Key - The "key" to associate with the {@link XttToolInfo.Params} object.
      * @param {String|Buffer} Text - The string that the tooltip will display, or a buffer containing
      * the string.
      * @param {Gui.Control} Ctrl - The `Gui.Control` object.
-     * @param {Integer} [Id] - The value to assign to the "uId" member of TTTOOLINFO. If unset,
-     * {@link TtToolInfo.GetUid} will assign the value.
+     * @param {Integer} [uId] - The value to assign to the "uId" member of TTTOOLINFO. If unset,
+     * {@link XttToolInfo.GetUid} will assign the value.
      * @returns {ToolInfo}
      */
-    AddControlRect(Key, Text, Ctrl, Id?) {
-        rc := XttRect.Window(Ctrl.Hwnd)
-        DllCall('ScreenToClient', 'ptr', Ctrl.Gui.Hwnd, 'ptr', rc.Ptr, 'int')
-        DllCall('ScreenToClient', 'ptr', Ctrl.Gui.Hwnd, 'ptr', rc.Ptr + 8, 'int')
+    AddControlRect(Key, Text, Ctrl, uId?) {
+        rc := XttRect.Client(Ctrl.Hwnd)
         return this.__AddTool(
             Key
           , {
-                ttHwnd: this.Hwnd
-              , Hwnd: Ctrl.Gui.Hwnd
-              , Id: Id ?? TtToolInfo.GetUid()
-              , Flags: TTF_SUBCLASS
+                HwndXtt: this.Hwnd
+              , hwnd: Ctrl.Hwnd
+              , uId: uId ?? XttToolInfo.GetUid()
+              , uFlags: TTF_SUBCLASS
               , L: rc.L
               , T: rc.T
               , R: rc.R
               , B: rc.B
+              , StrLen: StrLen(Text)
             }
           , Text
         )
     }
     /**
-     * @description - Creates a {@link TtToolInfo.Params} object with the needed values to associate
+     * @description - Creates a {@link XttToolInfo.Params} object with the needed values to associate
      * a tooltip with a rectangular area within a window's client area. Whenever the user's mouse
      * cursor enters into the area, the tooltip will display after a short delay. When the cursor
      * leaves the area, the tooltip will hide after a short delay.
-     * @param {String} Key - The "key" to associate with the {@link TtToolInfo.Params} object.
+     * @param {String} Key - The "key" to associate with the {@link XttToolInfo.Params} object.
      * @param {String|Buffer} Text - The string that the tooltip will display, or a buffer containing
      * the string.
-     * @param {Integer} ParentHwnd - The handle to the window containing the rectangle.
+     * @param {Integer} hwnd - The handle to the window containing the rectangle.
      * @param {Integer} [L] - The left client coordinate position.
      * @param {Integer} [T] - The top client coordinate position.
      * @param {Integer} [R] - The right client coordinate position.
      * @param {Integer} [B] - The bottom client coordinate position.
-     * @param {Integer} [Id] - The value to assign to the "uId" member of TTTOOLINFO. If unset,
-     * {@link TtToolInfo.GetUid} will assign the value.
+     * @param {Integer} [uId] - The value to assign to the "uId" member of TTTOOLINFO. If unset,
+     * {@link XttToolInfo.GetUid} will assign the value.
      * @returns {ToolInfo.Params}
      */
-    AddRect(Key, Text, ParentHwnd, L?, T?, R?, B?, Id?) {
-        rc := XttRect.Client(ParentHwnd)
+    AddRect(Key, Text, hwnd, L?, T?, R?, B?, uId?) {
+        rc := XttRect.Client(Hwnd)
         return this.__AddTool(
             Key
           , {
-                ttHwnd: this.Hwnd
-              , Hwnd: ParentHwnd
-              , Id: Id ?? TtToolInfo.GetUid()
-              , Flags: TTF_SUBCLASS
+                HwndXtt: this.Hwnd
+              , hwnd: Hwnd
+              , uId: uId ?? XttToolInfo.GetUid()
+              , uFlags: TTF_SUBCLASS
               , L: L ?? rc.L
               , T: T ?? rc.T
               , R: R ?? rc.R
               , B: B ?? rc.B
+              , StrLen: StrLen(Text)
             }
           , Text
         )
     }
     /**
-     * @description - Creates a {@link TtToolInfo.Params} with the needed values to create a tracking tooltip
+     * @description - Creates a {@link XttToolInfo.Params} object with the needed values to associate
+     * a tooltip with a rectangular area within a window's client area. Whenever the user's mouse
+     * cursor enters into the area, the tooltip will display after a short delay. When the cursor
+     * leaves the area, the tooltip will hide after a short delay.
+     * @param {String} Key - The "key" to associate with the {@link XttToolInfo.Params} object.
+     * @param {String|Buffer} Text - The string that the tooltip will display, or a buffer containing
+     * the string.
+     * @param {Integer} Hwnd - The handle to the window containing the rectangle.
+     * @param {XttRect|Buffer} RectObj - The rect object with the coordinates to use.
+     * @param {Integer} [uId] - The value to assign to the "uId" member of TTTOOLINFO. If unset,
+     * {@link XttToolInfo.GetUid} will assign the value.
+     * @returns {ToolInfo.Params}
+     */
+    AddRect2(Key, Text, Hwnd, RectObj, uId?) {
+        if not RectObj is XttRect {
+            ObjSetBase(RectObj, XttRect.Prototype)
+        }
+        return this.__AddTool(
+            Key
+          , {
+                HwndXtt: this.Hwnd
+              , hwnd: Hwnd
+              , uId: uId ?? XttToolInfo.GetUid()
+              , uFlags: TTF_SUBCLASS
+              , L: RectObj.L
+              , T: RectObj.T
+              , R: RectObj.R
+              , B: RectObj.B
+              , StrLen: StrLen(Text)
+            }
+          , Text
+        )
+    }
+    /**
+     * @description - Creates a {@link XttToolInfo.Params} with the needed values to create a tracking tooltip
      * (a tooltip which your code has full control over its visibility and position).
      *
      * Note that only one tracking tool can be added to a single Xtooltip.
      *
-     * @param {String} Key - The "key" to associate with the {@link TtToolInfo.Params} object.
+     * @param {String} Key - The "key" to associate with the {@link XttToolInfo.Params} object.
      * @param {String|Buffer} Text - The string that the tooltip will display or a buffer
      * containing the string.
-     * @param {Integer} [ParentHwnd] - If set, the handle to the tooltip's parent window. If
+     * @param {Integer} [hwnd] - If set, the handle to the tooltip's parent window. If
      * unset, `A_ScriptHwnd` is used.
-     * @param {Integer} [Id] - The value to assign to the "uId" member of TTTOOLINFO. If unset,
-     * {@link TtToolInfo.GetUid} will assign the value.
-     * @param {Boolean} [Show = XTT_DEFAULT_SHOW] - If true, the tool is shown immediately by the mouse
+     * @param {Integer} [uId] - The value to assign to the "uId" member of TTTOOLINFO. If unset,
+     * {@link XttToolInfo.GetUid} will assign the value.
+     * @param {Boolean} [Activate = false] - If true, the tool is shown immediately by the mouse
      * cursor.
+     * @param {Integer} [X] - If `Activate` is true, optionally specify the X and Y coordinates to
+     * display the tooltip. If `Activate` is false, `X` and `Y` are ignored. If `Activate` is true
+     * and `X` and/or `Y` are unset, the tooltip is shown near the mouse cursor.
+     * @param {Integer} [Y] - If `Activate` is true, optionally specify the X and Y coordinates to
+     * display the tooltip. If `Activate` is false, `X` and `Y` are ignored. If `Activate` is true
+     * and `X` and/or `Y` are unset, the tooltip is shown near the mouse cursor.
      * @returns {ToolInfo}
      */
-    AddTracking(Key, Text, ParentHwnd?, Id?, Show := XTT_DEFAULT_SHOW) {
+    AddTracking(Key, Text, hwnd?, uId?, Activate := false, X?, Y?) {
         if this.HasTrackingTool {
             XttErrors.ThrowTrackingError()
         }
         ti := this.__AddTool(
             Key
           , {
-                ttHwnd: this.Hwnd
-              , Hwnd: ParentHwnd ?? A_ScriptHwnd
-              , Id: Id ?? TtToolInfo.GetUid()
-              , Flags: TTF_ABSOLUTE | TTF_TRACK
+                HwndXtt: this.Hwnd
+              , hwnd: hwnd ?? A_ScriptHwnd
+              , uId: uId ?? XttToolInfo.GetUid()
+              , uFlags: TTF_ABSOLUTE | TTF_TRACK
+              , StrLen: StrLen(Text)
             }
           , Text
         )
         this.HasTrackingTool := 1
-        if Show {
-            this.TrackPositionByMouse(Key)
-            SendMessage(TTM_TRACKACTIVATE, 1, ti.Ptr, this.Hwnd)
+        if Activate {
+            if IsSet(X) && IsSet(Y) {
+                this.TrackActivate(Key, true, X, Y)
+            } else {
+                this.TrackActivateByMouse(Key)
+            }
         }
         return ti
     }
     /**
-     * @description - Creates a {@link TtToolInfo.Params} object with the needed values to associate
+     * @description - Creates a {@link XttToolInfo.Params} object with the needed values to associate
      * a tooltip with a window. Whenever the user's mouse cursor hovers over the window's client
      * area, the tooltip will display after a short delay. When the cursor leaves the window's
      * client area, the tooltip will hide after a short delay.
-     * @param {String} Key - The "key" to associate with the {@link TtToolInfo.Params} object.
+     * @param {String} Key - The "key" to associate with the {@link XttToolInfo.Params} object.
      * @param {String|Buffer} Text - The string that the tooltip will display or a buffer
      * containing the string.
-     * @param {Integer} ToolHwnd - The handle to the window to associate with the tool.
+     * @param {Integer} hwnd - The handle to the window to associate with the tool.
      * @returns {ToolInfo.Params}
      */
-    AddWindow(Key, Text, ToolHwnd) {
+    AddWindow(Key, Text, hwnd) {
         return this.__AddTool(
             Key
           , {
-                ttHwnd: this.Hwnd
-              , Hwnd: DllCall('GetAncestor', 'ptr', ToolHwnd, 'uint', 1, 'ptr') || ToolHwnd
-              , Id: ToolHwnd
-              , Flags: TTF_IDISHWND | TTF_SUBCLASS
+                HwndXtt: this.Hwnd
+              , Hwnd: DllCall('GetAncestor', 'ptr', hwnd, 'uint', 1, 'ptr') || hwnd
+              , uId: hwnd
+              , uFlags: TTF_IDISHWND | TTF_SUBCLASS
+              , StrLen: StrLen(Text)
             }
           , Text
         )
@@ -494,9 +540,9 @@ class Xtooltip extends Xtooltip.Base {
      * @param {String} Key - The key associated with the tool.
      */
     DelTool(Key) {
-        TiParams := this.Tools.Get(Key)
+        tiParams := this.Tools.Get(Key)
         this.Tools.Delete(Key)
-        ti := TtToolInfo(this.Hwnd, tiParams.Hwnd, tiParams.Id)
+        ti := tiParams()
         SendMessage(TTM_DELTOOLW, 0, ti.Ptr, this.Hwnd)
     }
     /**
@@ -523,13 +569,13 @@ class Xtooltip extends Xtooltip.Base {
         }
         if hwnd {
             for key, tiParams in this.Tools {
-                ti := TtToolInfo(hwnd, tiParams.Hwnd, tiParams.Id)
+                ti := XttToolInfo(hwnd, tiParams.hwnd, tiParams.uId)
                 SendMessage(TTM_DELTOOLW, 0, ti.Ptr, hwnd)
             }
             if this.GetToolCount() {
                 list := []
                 loop this.GetToolCount() {
-                    list.Push(TtToolInfo(hwnd, , , 160))
+                    list.Push(XttToolInfo(hwnd, , , 160))
                     SendMessage(TTM_ENUMTOOLSW, A_Index - 1, list[-1].Ptr, hwnd)
                 }
                 for ti in list {
@@ -543,33 +589,33 @@ class Xtooltip extends Xtooltip.Base {
         }
     }
     /**
-     * Find a {@link TtToolInfo.Params} object using the hwnd and id.
+     * Find a {@link XttToolInfo.Params} object using the hwnd and id.
      *
-     * @param {Integer} toolHwnd - The hwnd passed to {@link TtToolInfo.Prototype.__New~toolHwnd}.
+     * @param {Integer} hwnd - The hwnd passed to {@link XttToolInfo.Prototype.__New~hwnd}.
      * The following are descriptions of what is passed to `toolHwnd` from the indicated methods:
      * - {@link Xtooltip.Prototype.AddControl} - The control's parent gui's hwnd.
-     * - {@link Xtooltip.Prototype.AddControlRect} - The control's parent gui's hwnd.
+     * - {@link Xtooltip.Prototype.AddControlRect} - The control's hwnd.
      * - {@link Xtooltip.Prototype.AddRect} - The value passed to `ParentHwnd`.
      * - {@link Xtooltip.Prototype.AddTracking} - The value passed to `ParentHwnd` or `A_ScriptHwnd`
      *   if unset.
      * - {@link Xtooltip.Prototype.AddWindow} - The value passed to `ToolHwnd` or `ToolHwnd` was
      *   a child window, the return value from `DllCall('GetAncestor', 'ptr', ToolHwnd, 'uint', 1, 'ptr')`.
      *
-     * @param {Integer} toolId - The id passed to {@link TtToolInfo.Prototype.__New~uId}.
+     * @param {Integer} uId - The id passed to {@link XttToolInfo.Prototype.__New~uId}.
      * The following are descriptions of what is passed to `uId` from the indicated methods:
      * - {@link Xtooltip.Prototype.AddControl} - The control's hwnd.
-     * - {@link Xtooltip.Prototype.AddControlRect} - The value passed to `Id`, or if unset,
+     * - {@link Xtooltip.Prototype.AddControlRect} - The value passed to `uId`, or if unset,
      *   the return value from {@link Xtooltip.GetUid}.
-     * - {@link Xtooltip.Prototype.AddRect} - The value passed to `Id`, or if unset,
+     * - {@link Xtooltip.Prototype.AddRect} - The value passed to `uId`, or if unset,
      *   the return value from {@link Xtooltip.GetUid}.
-     * - {@link Xtooltip.Prototype.AddTracking} - The value passed to `Id`, or if unset,
+     * - {@link Xtooltip.Prototype.AddTracking} - The value passed to `uId`, or if unset,
      *   the return value from {@link Xtooltip.GetUid}.
-     * - {@link Xtooltip.Prototype.AddWindow} - The value passed to `ToolHwnd`.
+     * - {@link Xtooltip.Prototype.AddWindow} - The value passed to `hwnd`.
      */
-    FindToolInfoParams(toolHwnd, toolId) {
-        for key, TiParams in this.Tools {
-            if TiParams.Hwnd = toolHwnd && TiParams.Id = toolId {
-                return TiParams
+    FindToolInfoParams(hwnd, uId) {
+        for key, tiParams in this.Tools {
+            if HasProp(tiParams, 'hwnd') && tiParams.hwnd = hwnd && HasProp(tiParams, 'uId') && tiParams.uId = uId {
+                return tiParams
             }
         }
     }
@@ -581,7 +627,7 @@ class Xtooltip extends Xtooltip.Base {
     }
     /**
      * Sends {@link https://learn.microsoft.com/en-us/windows/win32/controls/ttm-getbubblesize TTM_GETBUBBLESIZE}.
-     * @param {String} [Key] - The "key" associated with a {@link TtToolInfo.Params} object.
+     * @param {String} [Key] - The "key" associated with a {@link XttToolInfo.Params} object.
      * @param {VarRef} [OutWidth] - A variable that will receive the width.
      * @param {VarRef} [OutHeight] - A variable that will receive the height.
      * @returns {Integer} - Returns the width of the tooltip in the low word and the height in the
@@ -601,11 +647,11 @@ class Xtooltip extends Xtooltip.Base {
      * @description - Attempts to get the current tool by sending TTM_GETCURRENTTOOLW. TTM_GETCURRENTTOOLW
      * will only retrieve the tooltip's text if the character count of the string is 79 or less
      * Sends {@link https://learn.microsoft.com/en-us/windows/win32/controls/ttm-getcurrenttool TTM_GETCURRENTTOOL}.
-     * @param {VarRef} [OutToolInfo] - A variable that will receive the {@link TtToolInfo} object.
+     * @param {VarRef} [OutToolInfo] - A variable that will receive the {@link XttToolInfo} object.
      * @returns {Integer} - Returns nonzero if successful, or zero otherwise.
      */
     GetCurrentTool(&OutToolInfo?) {
-        OutToolInfo := TtToolInfo(this.Hwnd, , , 160)
+        OutToolInfo := XttToolInfo(this.Hwnd, , , 160)
         return SendMessage(TTM_GETCURRENTTOOLW, 0, OutToolInfo.Ptr, this.Hwnd)
     }
     /**
@@ -638,40 +684,44 @@ class Xtooltip extends Xtooltip.Base {
     }
     /**
      * Sends {@link https://learn.microsoft.com/en-us/windows/win32/controls/ttm-gettext TTM_GETTEXT}.
-     * @param {String} [Key] - The "key" associated with a {@link TtToolInfo.Params} object.
-     * @param {Integer} [MaxChars] - The maximum characters to acquire from the tooltip.
+     * @param {String} [Key] - The "key" associated with a {@link XttToolInfo.Params} object.
+     * @param {Integer} [MaxChars] - The maximum characters to acquire from the tooltip. If unset,
+     * the {@link XttToolInfo.Params} object must have a property {@link XttToolInfo.Params#StrLen}
      * @returns {String}
+     * @throws {Error} - "Either `MaxChars` must be set, or the `XttToolInfo.Params` object must have a property "StrLen"."
+     * @throws {Error} - "Unable to retrieve the ``XttToolInfo.Params`` object associated with the current tool."
+     * @throws {Error} - "The tooltip does not have an active tool."
      */
     GetText(Key?, MaxChars?) {
         if IsSet(Key) {
             tiParams := this.Tools.Get(Key)
-            ti := TtToolInfo(this.Hwnd, tiParams.Hwnd, tiParams.Id)
+            ti := tiParams()
             if !IsSet(MaxChars) {
-                MaxChars := tiParams.TextSize
+                if HasProp(tiParams, 'StrLen') {
+                    MaxChars := tiParams.StrLen
+                } else {
+                    throw Error('Either ``MaxChars`` must be set, or the ``XttToolInfo.Params`` object must have a property "StrLen".')
+                }
             }
         } else if this.GetToolCount() {
             this.GetCurrentTool(&ti)
             if !IsSet(MaxChars) {
-                hwnd := ti.Hwnd
-                id := ti.Id
-                for key, _tiParams in this.Tools {
-                    if _tiParams.Hwnd = hwnd && _tiParams.Id = id {
-                        tiParams := _tiParams
-                        break
+                if tiParams := this.FindToolInfoParams(ti.hwnd, ti.uId) {
+                    if HasProp(tiParams, 'StrLen') {
+                        MaxChars := tiParams.StrLen
+                    } else {
+                        throw Error('Either ``MaxChars`` must be set, or the ``XttToolInfo.Params`` object must have a property "StrLen".')
                     }
-                }
-                if IsSet(tiParams) {
-                    MaxChars := tiParams.TextSize
                 } else {
-                    throw Error('Unable to retrieve the ``TtToolInfo.Params`` object associated with the current tool.', -1)
+                    throw Error('Unable to retrieve the ``XttToolInfo.Params`` object associated with the current tool.')
                 }
             }
         } else {
-            throw Error('The tooltip does not have an active tool.', -1)
+            throw Error('The tooltip does not have an active tool.')
         }
-        ti.SetTextBuffer(, MaxChars)
-        SendMessage(TTM_GETTEXTW, MaxChars, ti.Ptr, this.Hwnd)
-        return ti.Text
+        ti.SetTextBuffer(, MaxChars * 2 + 2)
+        SendMessage(TTM_GETTEXTW, MaxChars + 1, ti.Ptr, this.Hwnd)
+        return ti.lpszText
     }
     /**
      * Sends {@link https://learn.microsoft.com/en-us/windows/win32/controls/ttm-gettiptextcolor TTM_GETTIPTEXTCOLOR}.
@@ -700,27 +750,27 @@ class Xtooltip extends Xtooltip.Base {
     }
     /**
      * Sends {@link https://learn.microsoft.com/en-us/windows/win32/controls/ttm-gettoolinfo TTM_GETTOOLINFO}.
-     * @returns {TtToolInfo}
+     * @returns {XttToolInfo}
      */
     GetToolInfo(toolHwnd, toolId) {
-        ti := TtToolInfo(this.Hwnd, toolHwnd, toolId)
+        ti := XttToolInfo(this.Hwnd, toolHwnd, toolId)
         SendMessage(TTM_GETTOOLINFOW, 0, ti.Ptr, this.Hwnd)
         return ti
     }
     /**
-     * Gets a {@link TtToolInfo} object using the {@link TtToolInfo.Params} associated with `Key`, or
+     * Gets a {@link XttToolInfo} object using the {@link XttToolInfo.Params} associated with `Key`, or
      * if `Key` is unset, the current tool.
      * Sends {@link https://learn.microsoft.com/en-us/windows/win32/controls/ttm-gettoolinfo TTM_GETTOOLINFO}.
      *
-     * @param {String} [Key] - The "key" associated with a {@link TtToolInfo.Params} object. If unset,
+     * @param {String} [Key] - The "key" associated with a {@link XttToolInfo.Params} object. If unset,
      * gets information about the current tool.
      *
-     * @returns {TtToolInfo}
+     * @returns {XttToolInfo}
      */
     GetToolInfoObj(Key?) {
         if IsSet(Key) {
             tiParams := this.Tools.Get(Key)
-            ti := TtToolInfo(this.Hwnd, tiParams.Hwnd, tiParams.Id)
+            ti := XttToolInfo(this.Hwnd, tiParams.Hwnd, tiParams.Id)
             SendMessage(TTM_GETTOOLINFOW, 0, ti.Ptr, this.Hwnd)
             return ti
         } else if this.GetToolCount() {
@@ -733,7 +783,7 @@ class Xtooltip extends Xtooltip.Base {
     /**
      * Returns nonzero if the tool has the TTF_TRACK flag.
      *
-     * @param {String} [Key] - The "key" associated with a {@link TtToolInfo.Params} object. If unset,
+     * @param {String} [Key] - The "key" associated with a {@link XttToolInfo.Params} object. If unset,
      * gets information about the current tool.
      *
      * @returns {Integer} - Nonzero if the tool has the TTF_TRACK flag, else zero.
@@ -744,16 +794,16 @@ class Xtooltip extends Xtooltip.Base {
     /**
      * Sends {@link https://learn.microsoft.com/en-us/windows/win32/controls/ttm-newtoolrect TTM_NEWTOOLRECT}.
      *
-     * @param {String} [Key] - The "key" associated with a {@link TtToolInfo.Params} object.
+     * @param {String} [Key] - The "key" associated with a {@link XttToolInfo.Params} object.
      * @param {XttRect|Buffer} RectObj - The {@link XttRect} or similar buffer.
      */
     NewToolRect(Key, RectObj) {
-        TiParams := this.Tools.Get(Key)
-        ti := TtToolInfo(this.Hwnd, TiParams.Hwnd, TiParams.Id)
-        ti.L := RectObj.L
-        ti.T := RectObj.T
-        ti.R := RectObj.R
-        ti.B := RectObj.B
+        tiParams := this.Tools.Get(Key)
+        tiParams.L := RectObj.L
+        tiParams.T := RectObj.T
+        tiParams.R := RectObj.R
+        tiParams.B := RectObj.B
+        ti := tiParams()
         SendMessage(TTM_NEWTOOLRECTW, 0, ti.Ptr, this.Hwnd)
     }
     /**
@@ -931,7 +981,7 @@ class Xtooltip extends Xtooltip.Base {
      */
     SetTitle(Title, Icon := 0) {
         bytes := StrPut(Title, XTT_DEFAULT_ENCODING)
-        if bytes > 200 {
+        if bytes > 198 {
             throw Error('The title length exceeds the maximum (198 bytes).', , Title)
         }
         buf := Buffer(bytes)
@@ -945,69 +995,76 @@ class Xtooltip extends Xtooltip.Base {
      * @description - Sends TTM_SETTOOLINFO to update a tool with new values. Before sending the
      * message, {@link Xtooltip.Prototype.SetToolInfo} performs some pre-processing and validation to
      * ensure there are no issues. Specifically:
+     *
      * - If you do not set `Key` with a valid key, {@link Xtooltip.Prototype.SetToolInfo} iterates the
-     * objects in the ToolInfoParams collection to find a matching one. If a matching {@link TtToolInfo.Params}
+     * objects in the ToolInfoParams collection to find a matching one. If a matching {@link XttToolInfo.Params}
      * object is not found, an error is thrown.
-     * - If TTF_TRACK is included in `NewToolInfo.Flags`, and if the current {@link TtToolInfo.Params} object
+     * - If TTF_TRACK is included in `NewToolInfo.uFlags`, and if the current {@link XttToolInfo.Params} object
      * associated with `NewToolInfo` does not have the flag TTF_TRACK, and if the property
-     * "HasTrackingTool" is 1, an error is thrown because only one tracking tool can be active
+     * {@link Xtooltip#HasTrackingTool} is 1, an error is thrown because only one tracking tool can be active
      * at a time on an Xtooltip.
-     * - If TTF_TRACK is included in `NewToolInfo.Flags` and the value of "HasTrackingTool" is 0,
+     * - If TTF_TRACK is included in `NewToolInfo.uFlags` and the value of {@link Xtooltip#HasTrackingTool} is 0,
      * the value is set to 1.
-     * - If `NewToolInfo.Text` returns text, and if the length of the text is greater than 79 characters,
+     * - If `NewToolInfo.lpszText` returns text, and if the length of the text is greater than 79 characters,
      * {@link Xtooltip.Prototype.SetToolInfo} will proceed with a warning sent to `OutputDebug` explaining
-     * that the maximum characters is 79. If you encounter this, you should use method "UpdateTipText"
-     * instead.
-     * - If `NewToolInfo.Text` returns text, the value of the property "TextSize" is updated on the
-     * current {@link TtToolInfo.Params} object with the correct number of bytes.
+     * that the maximum characters is 79. If you encounter this, you should use method
+     * {@link Xtooltip.Prototype.UpdateTipText} instead.
+     * - If `NewToolInfo.lpszText` returns text, the value of the property "StrLen" is updated on the
+     * current {@link XttToolInfo.Params} object with the correct number of characters.
      *
      * If you update the tooltip's text, it must be 79 characters or less. If you need to update
      * the text with a longer string, use TTM_UPDATETIPTEXT instead.
      *
-     * @param {ToolInfo} NewToolInfo - The updated {@link TtToolInfo} object.
-     * @param {String} [Key] - The "key" associated with the {@link TtToolInfo.Params} object associated with
+     * @param {ToolInfo} NewToolInfo - The updated {@link XttToolInfo} object.
+     *
+     * @param {String} [Key] - The "key" associated with the {@link XttToolInfo.Params} object associated with
      * the tool that is being updated. If you need to add a new tool, use {@link Xtooltip.Prototype.AddTool}
      * or any of the other "Add" methods.
      *
-     * @throws {Error} - Unable to find the {@link TtToolInfo.Params} object associated with the new {@link TtToolInfo}
+     * @throws {Error} - Unable to find the {@link XttToolInfo.Params} object associated with the new {@link XttToolInfo}
      * object. Use {@link Xtooltip.Prototype.AddTool} instead.
      */
     SetToolInfo(NewToolInfo, Key?) {
         if IsSet(Key) {
-            if this.Tools.Has(Key) {
-                currentTiParams := this.Tools.Get(Key)
-            }
+            currentTiParams := this.Tools.Get(Key)
         } else {
-            ; find the existing {@link TtToolInfo.Params} object associated with the new `ToolInfo` object.
-            hwnd := NewToolInfo.Hwnd
-            id := NewToolInfo.Id
-            for key, tiParams in this.Tools {
-                if hwnd = tiParams.Hwnd && id = tiParams.Id {
-                    currentTiParams := tiParams
-                    break
-                }
+            ; find the existing XttToolInfo.Params object associated with the new `ToolInfo` object.
+            currentTiParams := this.FindToolInfoParams(NewToolInfo.Hwnd, NewToolInfo.uId)
+            if !currentTiParams {
+                throw Error('Unable to find the ``XttToolInfo.Params`` object associated with the new'
+                ' ``ToolInfo`` object. Use ``Xtooltip.Prototype.AddTool`` instead.', -1)
             }
         }
-        if IsSet(currentTiParams) {
-            if NewToolInfo.Flags & TTF_TRACK {
-                if this.HasTrackingTool {
-                    ; Only one tracking tool can be active on an Xtooltip at a time
-                    if !HasProp(currentTiParams, 'Flags') || !(currentTiParams.Flags & TTF_TRACK) {
-                        XttErrors.ThrowTrackingError()
-                    }
-                } else {
-                    this.HasTrackingTool := 1
+        if NewToolInfo.uFlags & TTF_TRACK {
+            if this.HasTrackingTool {
+                ; Only one tracking tool can be active on an Xtooltip at a time
+                if !HasProp(currentTiParams, 'uFlags') || !(currentTiParams.uFlags & TTF_TRACK) {
+                    XttErrors.ThrowTrackingError()
                 }
+            } else {
+                this.HasTrackingTool := 1
             }
-            if len := StrLen(NewToolInfo.Text) {
-                if len > 79 {
-                    OutputDebug('A maximum of 79 characters can be added to a tool using TTM_SETTOOLINFO. To add a longer string, use TTM_UPDATETIPTEXT`n')
+        }
+        if NewToolInfo.lpszText {
+            currentTiParams.StrLen := StrLen(NewToolInfo.lpszText)
+            if currentTiParams.StrLen > 79 {
+                OutputDebug('A maximum of 79 characters can be added to a tool using TTM_SETTOOLINFO. To add a longer string, use TTM_UPDATETIPTEXT.`n')
+            }
+        }
+        for prop in [ 'uFlags', 'hInst', 'lParam' ] {
+            if NewToolInfo.%prop% {
+                currentTiParams.%prop% := NewToolInfo.%prop%
+            }
+        }
+        dimensions := [ 'L', 'T', 'R', 'B' ]
+        ; If at least one property has a nonzero value, then we know the RECT member was used.
+        for prop in dimensions {
+            if NewToolInfo.%prop% {
+                for prop in dimensions {
+                    currentTiParams.%prop% := NewToolInfo.%prop%
                 }
-                currentTiParams.TextSize := StrPut(NewToolInfo.Text, XTT_DEFAULT_ENCODING)
+                break
             }
-        } else {
-            throw Error('Unable to find the `{@link TtToolInfo.Params}` object associated with the new'
-            ' ``ToolInfo`` object. Use ``Xtooltip.Prototype.AddTool`` instead.', -1)
         }
         SendMessage(TTM_SETTOOLINFOW, 0, NewToolInfo.Ptr, this.Hwnd)
     }
@@ -1022,26 +1079,47 @@ class Xtooltip extends Xtooltip.Base {
     }
     /**
      * Sends {@link https://learn.microsoft.com/en-us/windows/win32/controls/ttm-trackactivate TTM_TRACKACTIVATE}.
-     * @param {String} Key - The "key" associated with the {@link TtToolInfo.Params} object.
-     * @param {Boolean} Value - `true` to activate, `false` to deactivate.
+     * @param {String} Key - The "key" associated with the {@link XttToolInfo.Params} object.
+     * @param {Boolean} Value - true to activate, false to deactivate.
+     * @param {Integer} [X] - If `Value` is true, optionally specify the X and Y coordinates to
+     * display the tooltip. If `Value` is false, `X` and `Y` are ignored.
+     * @param {Integer} [Y] - If `Value` is true, optionally specify the X and Y coordinates to
+     * display the tooltip. If `Value` is false, `X` and `Y` are ignored.
      */
-    TrackActivate(Key, Value) {
-        tiParams := this.Tools.Get(Key)
-        ti := TtToolInfo(this.Hwnd, tiParams.Hwnd, tiParams.Id)
+    TrackActivate(Key, Value, X?, Y?) {
+        ti := this.Tools.Get(Key).Call()
+        if Value && IsSet(X) && IsSet(Y) {
+            SendMessage(TTM_TRACKPOSITION, 0, (Y << 16) | (X & 0xFFFF), this.Hwnd)
+        }
         SendMessage(TTM_TRACKACTIVATE, Value, ti.Ptr, this.Hwnd)
     }
     /**
+     * Sends {@link https://learn.microsoft.com/en-us/windows/win32/controls/ttm-trackactivate TTM_TRACKACTIVATE}
+     * and {@link https://learn.microsoft.com/en-us/windows/win32/controls/ttm-trackposition TTM_TRACKPOSITION}
+     * to position the tooltip by the mouse.
+     * @param {String} Key - The "key" associated with the {@link XttToolInfo.Params} object.
+     * @param {Integer} [OffsetX = 0] - A number of pixels to add to the X coordinate.
+     * @param {Integer} [OffsetY = 0] - A number of pixels to add to the Y coordinate.
+     */
+    TrackActivateByMouse(Key, OffsetX := 0, OffsetY := 0) {
+        pt := Buffer(8)
+        DllCall('GetCursorPos', 'ptr', pt, 'int')
+        SendMessage(TTM_TRACKPOSITION, 0, ((NumGet(pt, 4, 'int') + OffsetY) << 16) | ((NumGet(pt, 0, 'int') + OffsetX) & 0xFFFF), this.Hwnd)
+        ti := this.Tools.Get(Key).Call()
+        SendMessage(TTM_TRACKACTIVATE, true, ti.Ptr, this.Hwnd)
+    }
+    /**
      * Sends {@link https://learn.microsoft.com/en-us/windows/win32/controls/ttm-trackposition TTM_TRACKPOSITION}.
-     * @param {Integer} X - The x screen coordinate position.
-     * @param {Integer} Y - The y screen coordinate position.
+     * @param {Integer} X - The X screen coordinate position.
+     * @param {Integer} Y - The Y screen coordinate position.
      */
     TrackPosition(X, Y) {
         SendMessage(TTM_TRACKPOSITION, 0, (Y << 16) | (X & 0xFFFF), this.Hwnd)
     }
     /**
      * Sends {@link https://learn.microsoft.com/en-us/windows/win32/controls/ttm-trackposition TTM_TRACKPOSITION}.
-     * @param {Integer} [OffsetX = 0] - A number of pixels to add to the x coordinate.
-     * @param {Integer} [OffsetY = 0] - A number of pixels to add to the y coordinate.
+     * @param {Integer} [OffsetX = 0] - A number of pixels to add to the X coordinate.
+     * @param {Integer} [OffsetY = 0] - A number of pixels to add to the Y coordinate.
      */
     TrackPositionByMouse(OffsetX := 0, OffsetY := 0) {
         pt := Buffer(8)
@@ -1057,27 +1135,27 @@ class Xtooltip extends Xtooltip.Base {
     /**
      * Sends {@link https://learn.microsoft.com/en-us/windows/win32/controls/ttm-updatetiptext TTM_UPDATETIPTEXT}.
      *
-     * @param {String} Str - The text to display on the tooltip.
-     * @param {String} Key - The "key" associated with the {@link TtToolInfo.Params} object.
+     * @param {String} Text - The text to display on the tooltip.
+     * @param {String} Key - The "key" associated with the {@link XttToolInfo.Params} object.
      */
-    UpdateTipText(Str, Key) {
-        TiParams := this.Tools.Get(Key)
-        ti := this.GetToolInfo(TiParams.Hwnd, TiParams.Id)
-        ti.Text := Str
-        TiParams.TextSize := StrPut(Str, XTT_DEFAULT_ENCODING)
+    UpdateTipText(Text, Key) {
+        tiParams := this.Tools.Get(Key)
+        ti := tiParams()
+        ti.lpszText := Text
+        tiParams.StrLen := StrLen(Text)
         SendMessage(TTM_UPDATETIPTEXTW, 0, ti.Ptr, this.Hwnd)
     }
-    __AddTool(Key, TiParams, Text) {
+    __AddTool(Key, tiParams, Text) {
         if IsObject(Text) {
             buf := Text
         } else {
             buf := Buffer(StrPut(Text, XTT_DEFAULT_ENCODING))
             StrPut(Text, buf, XTT_DEFAULT_ENCODING)
         }
-        ObjSetBase(TiParams, TtToolInfo.Params.Prototype)
-        TiParams.TextSize := buf.Size
-        this.Tools.Set(Key, TiParams)
-        ti := TiParams(this)
+        ObjSetBase(tiParams, XttToolInfo.Params.Prototype)
+        tiParams.StrLen := StrLen(Text)
+        this.Tools.Set(Key, tiParams)
+        ti := tiParams()
         ti.SetText(buf)
         SendMessage(TTM_ADDTOOLW, 0, ti.Ptr, this.Hwnd)
         SendMessage(TTM_ACTIVATE, true, 0, this.hwnd)
@@ -1098,9 +1176,7 @@ class Xtooltip extends Xtooltip.Base {
     Dpi => this.Font.Dpi
     MaxWidth {
         Get => SendMessage(TTM_GETMAXTIPWIDTH, , , , this.Hwnd)
-        Set {
-            SendMessage(TTM_SETMAXTIPWIDTH, , Value, , this.Hwnd)
-        }
+        Set => SendMessage(TTM_SETMAXTIPWIDTH, , Value, , this.Hwnd)
     }
     Name {
         Get => this.__Name
@@ -1134,40 +1210,42 @@ class Xtooltip extends Xtooltip.Base {
     }
 
     class Options {
-        static Default := {
-            AlwaysOnTop: true
-          , BackColor: ''
-          , Escapement: 0
-          , ExStyle: 0
-          , FaceName: ''
-          , FontSize: ''
-          , H: 0
-          , HwndParent: A_ScriptHwnd
-          , Icon: 0
-          , Instance: 0
-          , Italic: 0
-          , MarginB: ''
-          , MarginL: ''
-          , MarginR: ''
-          , Margins: ''
-          , MarginT: ''
-          , MaxWidth: ''
-          , Menu: 0
-          , Name: ''
-          , Param: 0
-          , Quality: 5
-          , Strikeout: 0
-          , Style: 0
-          , TextColor: ''
-          , Theme: 0
-          , ThemeGroup: ''
-          , Title: ''
-          , Underline: 0
-          , W: 0
-          , Weight: 400
-          , WindowName: 0
-          , X: 0
-          , Y: 0
+        static __New() {
+            this.DeleteProp('__New')
+            Xtooltip_SetConstants()
+            this.Default := {
+                AddExStyle: ''
+              , AddStyle: ''
+              , AlwaysOnTop: true
+              , BackColor: ''
+              , Escapement: 0
+              , ExStyle: WS_EX_NOACTIVATE
+              , FaceName: ''
+              , FontSize: ''
+              , HwndParent: A_ScriptHwnd
+              , Icon: 0
+              , Instance: 0
+              , Italic: 0
+              , MarginB: ''
+              , MarginL: ''
+              , MarginR: ''
+              , Margins: ''
+              , MarginT: ''
+              , MaxWidth: ''
+              , Menu: 0
+              , Name: ''
+              , Param: 0
+              , Quality: 5
+              , Strikeout: 0
+              , Style: WS_BORDER | WS_POPUP | TTS_NOPREFIX
+              , TextColor: ''
+              , Theme: ''
+              , ThemeGroup: ''
+              , Title: ''
+              , Underline: 0
+              , Weight: 400
+              , WindowName: 0
+            }
         }
         static Call(Options?) {
             if IsSet(Options) {
@@ -1301,7 +1379,7 @@ class XttTheme extends Xtooltip.Base {
      *    - MarginR
      *    - MarginB
      *  - MaxWidth
-     *  - Name : The theme name can also be applied by including the property `Options.Name`.
+     *  - Name : The theme name (same as the parameter `ThemeName`)
      *  - TextColor
      *  - Title
      */
@@ -1551,16 +1629,41 @@ class XttTheme extends Xtooltip.Base {
 }
 
 class XttThemeGroup extends Xtooltip.Base {
+    static __New() {
+        this.DeleteProp('__New')
+        proto := this.Prototype
+        proto.LightModeName := proto.DarkModeName := ''
+    }
     /**
      * @param {String} GroupName
+     * @param {XttTheme|XttTheme[]} [Themes] - An {@link XttTheme} object or an array of
+     * {@link XttTheme} objects.
      */
-    __New(GroupName) {
+    __New(GroupName, Themes?) {
         this.__ActiveTheme := ''
         this.Themes := XttThemeCollection()
         this.Xtooltips := XttCollection()
         this.__Name := GroupName
         if this.ThemeGroupCollection {
             this.ThemeGroupCollection.Set(GroupName, this)
+        }
+        if IsSet(Themes) {
+            if Themes is Array {
+                this.ThemeAddList(Themes)
+            } else {
+                this.ThemeAdd(Themes, false)
+            }
+        }
+    }
+    /**
+     * @param {Boolean} Value - If true, activates the light mode theme. If false, activates the
+     * dark mode theme.
+     */
+    ActivateLight(Value) {
+        if Value {
+            this.ThemeActivate(this.LightModeName)
+        } else {
+            this.ThemeActivate(this.DarkModeName)
         }
     }
     Apply(Theme?) {
@@ -1647,7 +1750,33 @@ class XttThemeGroup extends Xtooltip.Base {
     GetActiveTheme() {
         return this.__ActiveTheme
     }
-    SetActiveTheme(Theme) {
+    /**
+     * Sets light mode and dark mode theme names, allowing your code to call
+     * {@link XttThemeGroup.Prototype.ActivateLight} to activate one or the other.
+     * @param {String} [LightModeName] - The name of the light mode theme.
+     * @param {String} [DarkModeName] - The name of the dark mode theme.
+     */
+    SetLightMode(LightModeName?, DarkModeName?) {
+        if IsSet(LightModeName) {
+            this.LightModeName := LightModeName
+        }
+        if IsSet(DarkModeName) {
+            this.DarkModeName := DarkModeName
+        }
+    }
+    SetName(GroupName) {
+        if this.ThemeGroupCollection {
+            if this.ThemeGroupCollection.Has(this.__Name) {
+                this.ThemeGroupCollection.Delete(this.__Name)
+            }
+            this.ThemeGroupCollection.Set(GroupName, this)
+        }
+        this.__Name := GroupName
+        for hwnd, xtt in this.Xtooltips {
+            xtt.ThemeGroupName := GroupName
+        }
+    }
+    ThemeActivate(Theme) {
         if IsObject(Theme) {
             if !Theme.__Name {
                 ; If you get this error, call `ThemeObj.SetName("SomeName")`.
@@ -1669,26 +1798,14 @@ class XttThemeGroup extends Xtooltip.Base {
         }
         this.__ActiveTheme := Theme
     }
-    SetName(GroupName) {
-        if this.ThemeGroupCollection {
-            if this.ThemeGroupCollection.Has(this.__Name) {
-                this.ThemeGroupCollection.Delete(this.__Name)
-            }
-            this.ThemeGroupCollection.Set(GroupName, this)
-        }
-        this.__Name := GroupName
-        for hwnd, xtt in this.Xtooltips {
-            xtt.ThemeGroupName := GroupName
-        }
-    }
     ThemeAdd(Theme, Activate := true) {
         if IsObject(Theme) {
-            if !Theme.HasOwnProp('__Name') {
-                ; If you get this error, call `ThemeObj.SetName("SomeName")`.
-                XttErrors.ThrowThemeGroupNoThemeName()
-            }
             if not Theme is XttTheme {
                 Theme := XttTheme(Theme)
+            }
+            if !StrLen(Theme.__Name) {
+                ; If you get this error, call `ThemeObj.SetName("SomeName")`.
+                XttErrors.ThrowThemeGroupNoThemeName()
             }
         } else {
             Theme := this.ThemeCollection.Get(Theme)
@@ -1701,6 +1818,11 @@ class XttThemeGroup extends Xtooltip.Base {
             this.__ActiveTheme := Theme
         }
         return Theme
+    }
+    ThemeAddList(Themes) {
+        for theme in Themes {
+            this.ThemeAdd(theme, false)
+        }
     }
     ThemeDelete(Theme) {
         this.Themes.Delete(IsObject(Theme) ? Theme.__Name : Theme)
@@ -1721,6 +1843,13 @@ class XttThemeGroup extends Xtooltip.Base {
             this.Apply%XttTheme.GetOptionCategory(OptionName)%()
         }
     }
+    ToggleLightMode() {
+        if this.__ActiveTheme.Name = this.LightModeName {
+            this.ActivateLight(0)
+        } else {
+            this.ActivateLight(1)
+        }
+    }
     XttAdd(Xtt, ApplyActiveTheme := true) {
         this.Xtooltips.Set(Xtt.Hwnd, Xtt)
         Xtt.ThemeGroupName := this.__Name
@@ -1735,7 +1864,7 @@ class XttThemeGroup extends Xtooltip.Base {
 
     ActiveTheme {
         Get => this.__ActiveTheme
-        Set => this.SetActiveTheme(Value)
+        Set => this.ThemeActivate(Value)
     }
     Name {
         Get => this.__Name
@@ -1743,55 +1872,50 @@ class XttThemeGroup extends Xtooltip.Base {
     }
 }
 
-/**
- * @classdesc - {@link TtToolInfo} maps the members of a TTTOOLINFO structure to AHK object properties.
- *
- * This webpage contains the members of the TTTOOLINFO structure:
- * {@link https://learn.microsoft.com/en-us/windows/win32/api/commctrl/ns-commctrl-tttoolinfoa}.
- */
-class TtToolInfo {
+class XttToolInfo {
     static __New() {
         this.DeleteProp('__New')
-        this.Prototype.cbSizeInstance :=
-        ;   size          member        type        offset
-            4 +         ; cbSize        uint         0
-            4 +         ; uFlags        uint         4
-            A_PtrSize + ; Hwnd          Hwnd         8
-            A_PtrSize + ; uId           UINT_PTR     8 + A_PtrSize
-            16 +        ; rect          RECT         8 + A_PtrSize * 2
-            A_PtrSize + ; hinst         HINSTANCE   24 + A_PtrSize * 2
-            A_PtrSize + ; lpszText      LPTSTR      24 + A_PtrSize * 3
-            A_PtrSize + ; lParam        LPARAM      24 + A_PtrSize * 4
-            A_PtrSize   ; lpReserved    void        24 + A_PtrSize * 5
+        proto := this.Prototype
+        proto.cbSizeInstance :=
+        ; Size      Type           Symbol         Offset                Padding
+        4 +         ; UINT         cbSize         0
+        4 +         ; UINT         uFlags         4
+        A_PtrSize + ; HWND         hwnd           8
+        A_PtrSize + ; UINT_PTR     uId            8 + A_PtrSize * 1
+        4 +         ; INT          L              8 + A_PtrSize * 2
+        4 +         ; INT          T              12 + A_PtrSize * 2
+        4 +         ; INT          R              16 + A_PtrSize * 2
+        4 +         ; INT          B              20 + A_PtrSize * 2
+        A_PtrSize + ; HINSTANCE    hinst          24 + A_PtrSize * 2
+        A_PtrSize + ; LPWSTR       lpszText       24 + A_PtrSize * 3
+        A_PtrSize + ; LPARAM       lParam         24 + A_PtrSize * 4
+        A_PtrSize   ; void         *lpReserved    24 + A_PtrSize * 5
+        proto.offset_cbSize       := 0
+        proto.offset_uFlags       := 4
+        proto.offset_hwnd         := 8
+        proto.offset_uId          := 8 + A_PtrSize * 1
+        proto.offset_L            := 8 + A_PtrSize * 2
+        proto.offset_T            := 12 + A_PtrSize * 2
+        proto.offset_R            := 16 + A_PtrSize * 2
+        proto.offset_B            := 20 + A_PtrSize * 2
+        proto.offset_hinst        := 24 + A_PtrSize * 2
+        proto.offset_lpszText     := 24 + A_PtrSize * 3
+        proto.offset_lParam       := 24 + A_PtrSize * 4
+        proto.offset_lpReserved   := 24 + A_PtrSize * 5
         this.Index := 0
-        this.DefineProp('__Call', { Call: XttSetThreadDpiAwareness__Call })
-        this.Prototype.DefineProp('__Call', { Call: XttSetThreadDpiAwareness__Call })
     }
     static GetUid() {
         return ++this.Index
     }
-    static HitTest(toolHwnd, X, Y) {
-        hti := {
-            Buffer: Buffer(this.Prototype.cbSizeInstance + A_PtrSize + 8)
-          , ToolInfo: { ttHwnd: toolHwnd, Buffer: { Ptr: hti.Ptr + A_PtrSize + 8, Size: this.Size } }
-        }
-        hti.Ptr := hti.Buffer.Ptr
-        hti.Size := hti.Buffer.Size
-        ObjSetBase(hti.ToolInfo, this.Prototype)
-        NumPut('ptr', toolHwnd, 'int', X, 'int', Y, hti)
-        if SendMessage(TTM_HITTESTW, 0, hti.Ptr, toolHwnd) {
-            return hti.ToolInfo
-        }
-    }
-    __New(ttHwnd, toolHwnd?, uId?, TextBufferSize?) {
-        this.ttHwnd := ttHwnd
+    __New(HwndXtt, Hwnd?, uId?, TextBufferSize?) {
+        this.HwndXtt := HwndXtt
         this.Buffer := Buffer(this.cbSizeInstance, 0)
-        NumPut('uint', this.cbSizeInstance, this) ; cbSize
-        if IsSet(toolHwnd) {
-            this.Hwnd := toolHwnd
+        this.cbSize := this.cbSizeInstance
+        if IsSet(Hwnd) {
+            this.hwnd := Hwnd
         }
         if IsSet(uId) {
-            this.Id := uId
+            this.uId := uId
         }
         if IsSet(TextBufferSize) {
             this.TextBuffer := Buffer(TextBufferSize)
@@ -1810,7 +1934,7 @@ class TtToolInfo {
             this.TextBuffer := Buffer(StrPut(Value, XTT_DEFAULT_ENCODING))
             StrPut(Value, this.TextBuffer, XTT_DEFAULT_ENCODING)
         }
-        NumPut('ptr', this.TextBuffer.Ptr, this, 24 + A_PtrSize * 3) ; lpszText
+        NumPut('ptr', this.TextBuffer.Ptr, this, this.offset_lpszText) ; lpszText
     }
     SetTextBuffer(Buf?, BufferSize?) {
         if IsSet(Buf) {
@@ -1820,77 +1944,109 @@ class TtToolInfo {
         } else {
             throw TypeError('An input value is required.', -1)
         }
-        NumPut('ptr', this.TextBuffer.Ptr, this, 24 + A_PtrSize * 3)
+        NumPut('ptr', this.TextBuffer.Ptr, this, this.offset_lpszText)
     }
-    B {
-        Get => NumGet(this, 20 + A_PtrSize * 2, 'uint')
+    cbSize {
+        Get => NumGet(this.Buffer, this.offset_cbSize, 'uint')
         Set {
-            NumPut('uint', Value, this, 20 + A_PtrSize * 2)
+            NumPut('uint', Value, this.Buffer, this.offset_cbSize)
         }
     }
-    Flags {
-        Get => NumGet(this, 4, 'uint')
+    uFlags {
+        Get => NumGet(this.Buffer, this.offset_uFlags, 'uint')
         Set {
-            NumPut('uint', Value, this, 4)
+            NumPut('uint', Value, this.Buffer, this.offset_uFlags)
         }
     }
-    Hwnd {
-        Get => NumGet(this, 8, 'ptr')
+    hwnd {
+        Get => NumGet(this.Buffer, this.offset_hwnd, 'ptr')
         Set {
-            NumPut('ptr', Value, this, 8)
+            NumPut('ptr', Value, this.Buffer, this.offset_hwnd)
         }
     }
-    hInstance {
-        get => NumGet(this, 24 + A_PtrSize * 2, 'ptr')
-        set {
-            NumPut('ptr', Value, 24 + A_PtrSize * 2)
-        }
-    }
-    Id {
-        Get => NumGet(this, 8 + A_PtrSize, 'ptr')
+    uId {
+        Get => NumGet(this.Buffer, this.offset_uId, 'ptr')
         Set {
-            NumPut('ptr', Value, this, 8 + A_PtrSize)
+            NumPut('ptr', Value, this.Buffer, this.offset_uId)
         }
     }
     L {
-        Get => NumGet(this, 8 + A_PtrSize * 2, 'uint')
+        Get => NumGet(this.Buffer, this.offset_L, 'int')
         Set {
-            NumPut('uint', Value, this, 8 + A_PtrSize * 2)
+            NumPut('int', Value, this.Buffer, this.offset_L)
+        }
+    }
+    T {
+        Get => NumGet(this.Buffer, this.offset_T, 'int')
+        Set {
+            NumPut('int', Value, this.Buffer, this.offset_T)
+        }
+    }
+    R {
+        Get => NumGet(this.Buffer, this.offset_R, 'int')
+        Set {
+            NumPut('int', Value, this.Buffer, this.offset_R)
+        }
+    }
+    B {
+        Get => NumGet(this.Buffer, this.offset_B, 'int')
+        Set {
+            NumPut('int', Value, this.Buffer, this.offset_B)
+        }
+    }
+    hinst {
+        Get => NumGet(this.Buffer, this.offset_hinst, 'ptr')
+        Set {
+            NumPut('ptr', Value, this.Buffer, this.offset_hinst)
+        }
+    }
+    lpszText {
+        Get {
+            Value := NumGet(this.Buffer, this.offset_lpszText, 'ptr')
+            if Value > 0 {
+                return StrGet(Value, XTT_DEFAULT_ENCODING)
+            } else {
+                return Value
+            }
+        }
+        Set {
+            if Type(Value) = 'String' {
+                if !this.HasOwnProp('TextBuffer')
+                || (this.TextBuffer is Buffer && this.TextBuffer.Size < StrPut(Value, XTT_DEFAULT_ENCODING)) {
+                    this.TextBuffer := Buffer(StrPut(Value, XTT_DEFAULT_ENCODING))
+                    NumPut('ptr', this.TextBuffer.Ptr, this.Buffer, this.offset_lpszText)
+                }
+                StrPut(Value, this.TextBuffer, XTT_DEFAULT_ENCODING)
+            } else if Value is Buffer {
+                this.TextBuffer := Value
+                NumPut('ptr', this.TextBuffer.Ptr, this.Buffer, this.offset_lpszText)
+            } else {
+                this.TextBuffer := Value
+                NumPut('ptr', this.TextBuffer, this.Buffer, this.offset_lpszText)
+            }
         }
     }
     lParam {
-        Get => NumGet(this, 24 + A_PtrSize * 4, 'uint')
+        Get => NumGet(this.Buffer, this.offset_lParam, 'ptr')
         Set {
-            NumPut('ptr', Value, this, 24 + A_PtrSize * 4)
+            NumPut('ptr', Value, this.Buffer, this.offset_lParam)
         }
     }
-    Ptr => this.Buffer.Ptr
-    R {
-        Get => NumGet(this, 16 + A_PtrSize * 2, 'uint')
+    lpReserved {
+        Get => NumGet(this.Buffer, this.offset_lpReserved, 'ptr')
         Set {
-            NumPut('uint', Value, this, 16 + A_PtrSize * 2)
-        }
-    }
-    Size => this.Buffer.Size
-    Text {
-        Get => this.TextPtr ? StrGet(this.TextPtr, XTT_DEFAULT_ENCODING) : ''
-        Set {
-            this.SetText(Value)
+            NumPut('ptr', Value, this.Buffer, this.offset_lpReserved)
         }
     }
     TextPtr {
         Get => NumGet(this, 24 + A_PtrSize * 3, 'ptr')
         Set => this.SetTextBuffer(Value)
     }
-    T {
-        Get => NumGet(this, 12 + A_PtrSize * 2, 'uint')
-        Set {
-            NumPut('uint', Value, this, 12 + A_PtrSize * 2)
-        }
-    }
+    Ptr => this.Buffer.Ptr
+    Size => this.Buffer.Size
 
     /**
-     * @classdesc - The purpose of {@link TtToolInfo.Params} is to simplify the process of interacting with
+     * @classdesc - The purpose of {@link XttToolInfo.Params} is to simplify the process of interacting with
      * the TTTOOLINFO structure that is needed for many tooltip-related functions / messages.
      *
      * {@link https://learn.microsoft.com/en-us/windows/win32/controls/ttm-settoolinfo}.
@@ -1898,19 +2054,20 @@ class TtToolInfo {
     class Params {
         static __New() {
             this.DeleteProp('__New')
-            this.Prototype.Props := ['Flags', 'Hwnd', 'Id', 'L', 'T', 'R', 'B', 'hInstance', 'lParam']
+            this.Prototype.Props := [ 'uFlags', 'hwnd', 'uId', 'L', 'T', 'R', 'B', 'hInst', 'lParam' ]
         }
         /**
          * @description - Validates the parameters and copies their values to this instance of
-         * {@link TtToolInfo.Params}.
+         * {@link XttToolInfo.Params}.
          *
-         * @param {Xtooltip} Xtt - The {@link Xtooltip} object. This object's handle is copied
-         * to property "TtHwnd".
+         * @param {Xtooltip} HwndXtt - The value of {@link Xtooltip#Hwnd}.
          *
          * @param {Object} Params - An object with property:value pairs.
          *
-         * @param {Integer} [Params.Flags] - One or more flags to assign to the member `uFlags`.
-         * To combine values, use the bitwise "|" (e.g. `Params.Flags := 0x0020 | 0x0080`).
+         * @param {String} [Params.StrLen] - The length of the text displayed by the tooltip.
+         *
+         * @param {Integer} [Params.uFlags] - One or more flags to assign to the member `uFlags`.
+         * To combine values, use the bitwise "|" (e.g. `Params.uFlags := 0x0020 | 0x0080`).
          * For descriptions of these flags see
          * {@link https://learn.microsoft.com/en-us/windows/win32/api/commctrl/ns-commctrl-tttoolinfoa}.
          * - TTF_IDISHWND            0x0001
@@ -1923,10 +2080,10 @@ class TtToolInfo {
          * - TTF_PARSELINKS          0x1000
          * - TTF_DI_SETITEM          0x8000       // valid only on the TTN_NEEDTEXT callback
          *
-         * @param {Integer} Params.Hwnd - The handle to the window that contains the tool. This is
+         * @param {Integer} Params.hwnd - The handle to the window that contains the tool. This is
          * required.
          *
-         * @param {Integer} [Params.Id] - The Windows API requires the member "uId" member when
+         * @param {Integer} [Params.uId] - The Windows API requires the member "uId" member when
          * activating a tool. "uId" is either a control's window handle, or an application-defined
          * unique identifier. To learn more about this member, read seaction "Supporting Tools"
          * here: {@link https://learn.microsoft.com/en-us/windows/win32/controls/tooltip-controls}.
@@ -1939,7 +2096,7 @@ class TtToolInfo {
          * the area's bounding rectangle. For tooltips that support tools implemented as windows or
          * as in-place tooltips, the "rect" member is not used.
          *
-         * @param {Integer} [Params.hInstance] - You can leave this unset. Microsoft's
+         * @param {Integer} [Params.hInst] - You can leave this unset. Microsoft's
          * description states: Handle to the instance that contains the string resource for the tool.
          * If lpszText specifies the identifier of a string resource, this member is used.
          *
@@ -1949,40 +2106,39 @@ class TtToolInfo {
          * @returns {ToolInfo.Params}
          *
          * @throws {TypeError} - The property "<prop>" must be a <type>.
-         * @throws {TypeError} - The property "Text" must be set with a `Buffer` object or an object with properties "Size" and "Ptr".
-         * @throws {PropertyError} - The property "ttHwnd" is required.
+         * @throws {PropertyError} - The property "HwndXtt" is required.
          * @throws {PropertyError} - The flag `TTF_IDISHWND` in use, but the property "Hwnd" is unset.
          * @throws {PropertyError} - The flag `TTF_IDISHWND` is in use, but the property "Id" is unset.
          * @throws {PropertyError} - If at least one of properties "L", "T", "R", or "B", is set, then all four must be set.
          */
-        __New(Xtt, Params) {
-            if HasProp(Params, 'Flags') {
-                if !IsNumber(Params.Flags) {
-                    throw _TypeError('Flags')
+        __New(HwndXtt, Params) {
+            if HasProp(Params, 'uFlags') {
+                if !IsNumber(Params.uFlags) {
+                    throw _TypeError('uFlags')
                 }
-                if Params.Flags & 0x0001 {
-                    if !HasProp(Params, 'Hwnd') {
-                        ; If you get this error, you must set "Hwnd" with the handle to the parent
-                        ; of "Id". If "Id" does not have a parent window, then set "Hwnd" to the same
-                        ; value as "Id".
-                        throw PropertyError('The flag ``TTF_IDISHWND`` in use, but the property "Hwnd" is unset.', -1)
+                if Params.uFlags & TTF_IDISHWND {
+                    if !HasProp(Params, 'hwnd') {
+                        ; If you get this error, you must set "hwnd" with the handle to the parent
+                        ; of "uId". If "uId" does not have a parent window, then set "hwnd" to the same
+                        ; value as "uId".
+                        throw PropertyError('The flag ``TTF_IDISHWND`` in use, but the property "hwnd" is unset.', -1)
                     }
-                    if !HasProp(Params, 'Id') {
-                        ; If you get this error, you must set "Id" with the handle to the window that
-                        ; is the tool that this `ToolInfo` object represents. For example, by passing
-                        ; a `Gui.Control` object to {@link Xtooltip.Prototype.GetToolControl} or to
-                        ; {@link Xtooltip.Prototype.GetToolWindow}.
-                        throw PropertyError('The flag ``TTF_IDISHWND`` in use, but the property "Id" is unset.', -1)
+                    if !HasProp(Params, 'uId') {
+                        ; If you get this error, you must set "uId" with the handle to the window that
+                        ; is the tool that this `XttToolInfo` object represents. For example, by passing
+                        ; a `Gui.Control` object to `Xtooltip.Prototype.GetToolControl` or to
+                        ; `Xtooltip.Prototype.GetToolWindow`.
+                        throw PropertyError('The flag ``TTF_IDISHWND`` in use, but the property "uId" is unset.', -1)
                     }
                 }
             }
-            if !IsNumber(Params.Hwnd) {
-                throw _TypeError('Hwnd')
+            if !IsNumber(Params.hwnd) {
+                throw _TypeError('hwnd')
             }
-            if HasProp(Params, 'Hwnd') {
-                this.Hwnd := Params.Hwnd
+            if HasProp(Params, 'hwnd') {
+                this.hwnd := Params.hwnd
             } else {
-                this.Hwnd := A_ScriptHwnd
+                this.hwnd := A_ScriptHwnd
             }
             ct := 0
             for prop in ['L', 'T', 'R', 'B'] {
@@ -1998,7 +2154,7 @@ class TtToolInfo {
                 case 0,  4: ; do nothing
                 default: throw PropertyError('If at least one of properties "L", "T", "R", or "B", is set, then all four must be set.', -1)
             }
-            for prop in ['hInstance', 'lParam', 'Id'] {
+            for prop in ['hInst', 'lParam', 'uId'] {
                 if HasProp(Params, prop) {
                     if IsNumber(Params.%prop%) {
                         this.%prop% := Params.%prop%
@@ -2007,10 +2163,16 @@ class TtToolInfo {
                     }
                 }
             }
-            if !this.HasOwnProp('Id') {
-                this.Id := TtToolInfo.GetUid()
+            if !HasProp(this, 'uId') {
+                this.uId := XttToolInfo.GetUid()
             }
-            this.TtHwnd := Xtt.Hwnd
+            if HasProp(Params, 'StrLen') {
+                if !IsNumber(Params.StrLen) {
+                    throw _TypeError('StrLen')
+                }
+                this.StrLen := Params.StrLen
+            }
+            this.HwndXtt := HwndXtt
 
             return
 
@@ -2025,14 +2187,11 @@ class TtToolInfo {
          * {@link ToolInfo.Params.Prototype.Call} validates the property values on this object, gets the
          * current TTTOOLINFO structure from the {@link Xtooltip} object by sending TTM_GETCURRENTTOOLW,
          * updates the members using the values of the properties on this object, then returns the
-         * updated {@link TtToolInfo} object.
+         * updated {@link XttToolInfo} object.
          */
-        Call(Xtt) {
-            if !Xtt.GetCurrentTool(&ti) {
-                ti.Hwnd := this.Hwnd
-                ti.Id := this.Id
-            }
-            for prop in this.Props {
+        Call() {
+            ti := XttToolInfo(this.HwndXtt)
+            for prop in this.props {
                 if HasProp(this, prop) {
                     ti.%prop% := this.%prop%
                 }
@@ -2070,6 +2229,10 @@ class XttRect {
         ) {
             throw OsError('DwmGetWindowAttribute failed.', -1, hresult)
         }
+        return rc
+    }
+    static Margin(Margin) {
+        rc := this(margin, margin, margin, margin)
         return rc
     }
 
@@ -2605,12 +2768,13 @@ XttParseColorRef(colorref, &OutR?, &OutG?, &OutB?) {
     OutB := (colorref >> 16) & 0xFF
 }
 
-XttDeclareConstants() {
+Xtooltip_SetConstants(force := false) {
     global
-
+    if !force && IsSet(g_Xtooltip_constants_set) && g_Xtooltip_constants_set {
+        return
+    }
     ; XTT - constants for this library
     XTT_DEFAULT_ENCODING := 'UTF-16'
-    XTT_DEFAULT_SHOW := true
     XTT_DEFAULT_TITLEMAXCHARS := 100
 
     ; TTM - tooltip messages
@@ -2744,11 +2908,13 @@ XttDeclareConstants() {
 
     WM_SETFONT := 0x0030
     WM_USER := 1024
+
+    g_Xtooltip_constants_set := 1
 }
 
 /**
  * @description - Enables the usage of the "_S" suffix when calling {@link Xtooltip} instance methods,
- * {@link TtToolInfo} static methods, {@link TtToolInfo} instance methods, {@link XttRect} static methods, and {@link XttRect}
+ * {@link XttToolInfo} static methods, {@link XttToolInfo} instance methods, {@link XttRect} static methods, and {@link XttRect}
  * instance methods. By including "_S" at the end of a method call, the function will set the
  * thread dpi awareness context before calling the method.
  */

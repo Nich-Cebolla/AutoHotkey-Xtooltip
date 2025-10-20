@@ -34,7 +34,7 @@ class Demo {
         )
         ; create the Xtooltip. Notice how there is only one Xtooltip for all three buttons
         ; we pass the theme to the fourth parameter
-        xtt := Xtooltip({ Name: 'Buttons', Theme: theme })
+        xtt := Xtooltip({ Name: 'Buttons', Theme: theme, AddStyle: TTS_ALWAYSTIP })
         ; add the tools
         xtt.AddControl(
             'Button1'                           ; Name for the tool
@@ -64,7 +64,7 @@ class Demo {
         )
         ; create the Xtooltip. Notice how there is only one Xtooltip for all three edit controls
         ; we pass the theme to the fourth parameter
-        xtt := Xtooltip({ Name: 'Edits', Theme: theme })
+        xtt := Xtooltip({ Name: 'Edits', Theme: theme, AddStyle: TTS_ALWAYSTIP })
         ; add the tools. We'll add them in a loop this time
         for ctrl in controls {
             xtt.AddControl('Edit' A_Index, DemoStrings.Edits[A_Index], ctrl)
@@ -145,14 +145,14 @@ class Demo {
         ; prepare gui
         eventHandler := this.EventHandler := DemoEventHandler()
         DllCall('SetThreadDpiAwarenessContext', 'ptr', -3, 'ptr')
-        g := this.Ui := Gui('+Resize -DPIScale', 'Xtooltip Demo', eventHandler)
+        g := this.Ui := Gui('+Resize -DPIScale', 'Xtooltip sandbox', eventHandler)
         DllCall('SetThreadDpiAwarenessContext', 'ptr', -4, 'ptr')
         g.SetFont(fontOpt, faceName)
         txtInfoDummy := g.Add('Text', 'r' txtInfoRows ' vTxtInfoDummy')
         txtInfoDummy.GetPos(, &txty, , &txth)
 
         ; make Xtooltip for the gui
-        xttUi := Xtooltip({ ParentHwnd: g.Hwnd, Name: 'Main', Theme: uiTheme })
+        xttUi := Xtooltip({ ParentHwnd: g.Hwnd, Name: 'Main', Theme: uiTheme, AddStyle: TTS_ALWAYSTIP })
 
         ; make three Demo buttons
         buttons := this.Buttons := []
@@ -313,7 +313,7 @@ class Demo {
         lb.GetPos(&lbx)
         lbTools.GetPos(, &lby, , &lbh)
         g['EdtBackG'].GetPos(&edtx, , &edtw)
-        xttPreview := this.XttPreview := Xtooltip({ HwndParent: g.Hwnd, Name: 'Preview', Theme: previewTheme })
+        xttPreview := this.XttPreview := Xtooltip({ HwndParent: g.Hwnd, Name: 'Preview', Theme: previewTheme, AddStyle: TTS_ALWAYSTIP })
         xttPreview.AddTracking(0, 'Preview', , , false)
         xttPreview.TrackActivate(0, 1)
         xttPreview.BoundL := lbx
@@ -614,26 +614,27 @@ class DemoEventHandler {
         xtt.Update()
     }
     __Call(Name, Params) {
-        try {
-            this.%Name '_'%(Params*)
-        } catch Error as err {
-            Demo.Ui['EdtError'].Text := (
-                'Message: ' err.Message '`r`n'
-                'Extra: ' err.Extra '`r`n'
-                'What: ' err.What '`r`n'
-                'Line: ' err.Line '`r`n'
-                'Stack:`r`n'
-                err.Stack
-                '`r`n===================`r`n'
-                Demo.Ui['EdtError'].Text
-            )
-        }
+        this.%Name '_'%(Params*)
+        ; try {
+        ;     this.%Name '_'%(Params*)
+        ; } catch Error as err {
+        ;     Demo.Ui['EdtError'].Text := (
+        ;         'Message: ' err.Message '`r`n'
+        ;         'Extra: ' err.Extra '`r`n'
+        ;         'What: ' err.What '`r`n'
+        ;         'Line: ' err.Line '`r`n'
+        ;         'Stack:`r`n'
+        ;         err.Stack
+        ;         '`r`n===================`r`n'
+        ;         Demo.Ui['EdtError'].Text
+        ;     )
+        ; }
     }
 }
 
 class DemoStrings {
     static Welcome := (
-        'Welcome to the Xtooltip Demo. Try hovering your mouse over the edit controls or buttons below on the left.'
+        'Welcome to the Xtooltip sandbox. Try hovering your mouse over the edit controls or buttons below on the left.'
         '`r`nTo modify an Xtooltip, select the Xtooltip in the list box. Change any of the'
         ' properties by typing new values into the edit controls and clicking "Set". To change an'
         ' Xtooltip`'s text, select a tool then modify the text in the edit control beneath "Xtooltips".'
