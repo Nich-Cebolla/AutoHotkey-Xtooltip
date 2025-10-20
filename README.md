@@ -3,6 +3,7 @@
 <ol type="I">
   <li><a href="#xtooltip">Xtooltip</a></li>
   <li><a href="#autohotkeycom-link">AutoHotkey.com link</a></li>
+  <li><a href="#redditcom-link">Reddit.com link</a></li>
   <li><a href="#quick-start">Quick start</a></li>
   <li><a href="#related-libraries">Related libraries</a></li>
   <li><a href="#options">Options</a></li>
@@ -64,13 +65,14 @@ in [Quick start](#quick-start) section.
 This is the sandbox.
 
 <img src="images\sandbox.png" alt="Xtooltip sandbox">
-<!--
-![Xtooltip sandbox](images\sandbox.png)
--->
 
 # AutoHotkey.com link
 
+Join the discussion on AutoHotkey.com: https://www.autohotkey.com/boards/viewtopic.php?f=83&t=139315
 
+# Reddit.com link
+
+Join the discussion on Reddit: https://www.reddit.com/r/AutoHotkey/comments/1ob8knu/xtooltip_a_library_that_provides_functions_for/
 
 # Quick start
 
