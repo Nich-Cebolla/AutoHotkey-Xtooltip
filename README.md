@@ -215,7 +215,6 @@ about the maximum width.
 Leave this 0.
 - **{ String }** [ `Options.Name` ] - A name to associate with the `Xtooltip` object. See [Collections](#collections).
 - **{ Integer }** [ `Options.Param = 0` ] - The value to pass to the `lParam` parameter of `CreateWindowExW`.
-Leave this 0.
 - **{ Integer }** [ `Options.Quality = 5` ] - The font quality.
 - **{ Integer }** [ `Options.Strikeout = 0` ] - Set to 1 to strikeout the text.
 - **{ Integer }** [ `Options.Style = WS_BORDER | WS_POPUP | TTS_NOPREFIX` ] - The window style flags.
