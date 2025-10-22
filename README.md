@@ -121,7 +121,7 @@ xtt := Xtooltip({ Theme: theme })
     ```ahk
     g := Gui()
     g.SetFont("s11 q5")
-    btn := g.Add("Button", "w125 Section", "Click me")
+    btn := g.Add("Button", "w125", "Click me")
     xtt.AddControl("Name1", "Click the button!", btn)
     ```
   - Associate a control's client area to cause the tooltip to appear when
@@ -182,8 +182,10 @@ If there is a default value, the format for the option is:
 If there is not a default value, the format for the option is:
 - **{ Type }** [ `Options.<Name>` ] - *description*
 
+
 If `Options.Theme` or `Options.ThemeGroup` are set, all other customization options are ignored.
 `Options.Theme` supercedes `Options.ThemeGroup`.
+
 
 - **{ Integer }** [ `Options.AddExStyle` ] - Extended window style flags to use in addition to the default `Options.ExStyle`.
 - **{ Integer }** [ `Options.AddStyle` ] - Window style flags to use in addition to the default `Options.Style`.
