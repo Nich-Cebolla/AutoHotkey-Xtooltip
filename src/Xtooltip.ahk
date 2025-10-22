@@ -1235,7 +1235,16 @@ class Xtooltip extends Xtooltip.Base {
         Set => this.SetTheme(Value)
     }
     ThemeGroup {
-        Get => this.ThemeGroupCollection && this.ThemeGroupCollection.Has(this.ThemeGroupName) ? this.ThemeGroupCollection.Get(this.ThemeGroupName) : ''
+        Get {
+            if this.ThemeGroupCollection {
+                if this.ThemeGroupCollection.Has(this.ThemeGroupName) {
+                    return this.ThemeGroupCollection.Get(this.ThemeGroupName)
+                }
+            } else {
+                throw Error('Your code must call the static method ``Xtooltip.RegisterAllCollections``'
+                ' or ``Xtooltip.RegisterThemeGroupCollection`` before accessing the "ThemeGroup" property.')
+            }
+        }
         Set => this.SetThemeGroup(Value)
     }
     Title {
