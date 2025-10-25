@@ -812,23 +812,54 @@ ParseColorRef(colorref, &OutR?, &OutG?, &OutB?) {
 class CWPRETSTRUCT {
     static __New() {
         this.DeleteProp('__New')
-        this.Prototype.Size :=
-        A_PtrSize +         ; LRESULT (LONG_PTR)    lResult       0
-        A_PtrSize +         ; LPARAM (LONG_PTR)     lParam        4
-        A_PtrSize +         ; WPARAM (UINT_PTR)     wParam        8
-        4 +                 ; UINT                  message       12
-        A_PtrSize           ; HWND                  hwnd          16
+        proto := this.Prototype
+        proto.Size :=
+        ; Size      Type         Symbol     Offset               Padding
+        A_PtrSize + ; LRESULT    lResult    0
+        A_PtrSize + ; LPARAM     lParam     0 + A_PtrSize * 1
+        A_PtrSize + ; WPARAM     wParam     0 + A_PtrSize * 2
+        A_PtrSize + ; UINT       message    0 + A_PtrSize * 3    +4 on x64 only
+        A_PtrSize   ; HWND       hwnd       0 + A_PtrSize * 4
+        proto.offset_lResult  := 0
+        proto.offset_lParam   := 0 + A_PtrSize * 1
+        proto.offset_wParam   := 0 + A_PtrSize * 2
+        proto.offset_message  := 0 + A_PtrSize * 3
+        proto.offset_hwnd     := 0 + A_PtrSize * 4
     }
-    __New(Ptr) {
-        this.Ptr := Ptr
+    __New(ptr) {
+        this.ptr := ptr
     }
-    Result => NumGet(this, 0, 'ptr')
-    lParam => NumGet(this, A_PtrSize, 'ptr')
-    wParam => NumGet(this, A_PtrSize * 2, 'uptr')
-    Message => NumGet(this, A_PtrSize * 3, 'uint')
-    Hwnd => NumGet(this, A_PtrSize * 3 + 4, 'ptr')
+    lResult {
+        Get => NumGet(this.Buffer, this.offset_lResult, 'ptr')
+        Set {
+            NumPut('ptr', Value, this.Buffer, this.offset_lResult)
+        }
+    }
+    lParam {
+        Get => NumGet(this.Buffer, this.offset_lParam, 'ptr')
+        Set {
+            NumPut('ptr', Value, this.Buffer, this.offset_lParam)
+        }
+    }
+    wParam {
+        Get => NumGet(this.Buffer, this.offset_wParam, 'ptr')
+        Set {
+            NumPut('ptr', Value, this.Buffer, this.offset_wParam)
+        }
+    }
+    message {
+        Get => NumGet(this.Buffer, this.offset_message, 'uint')
+        Set {
+            NumPut('uint', Value, this.Buffer, this.offset_message)
+        }
+    }
+    hwnd {
+        Get => NumGet(this.Buffer, this.offset_hwnd, 'ptr')
+        Set {
+            NumPut('ptr', Value, this.Buffer, this.offset_hwnd)
+        }
+    }
 }
-
 
 class WindowPos {
     static __New() {
