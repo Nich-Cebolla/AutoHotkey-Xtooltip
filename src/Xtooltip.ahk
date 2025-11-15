@@ -50,7 +50,12 @@ class Xtooltip extends Xtooltip.Base {
      * been added to a collection by a given name, it will be overwritten.
      */
     static RegisterThemeCollection(ThemeCollection?, CaseSense := false) {
-        return this.ThemeCollection := ThemeCollection ?? XttThemeCollection(CaseSense)
+        if IsSet(ThemeCollection) {
+            this.ThemeCollection := ThemeCollection
+        } else if !this.ThemeCollection {
+            this.ThemeCollection := XttThemeCollection(CaseSense)
+        }
+        return this.ThemeCollection
     }
     /**
      * Registers the ThemeGroupCollection. When new {@link XttThemeGroup} objects are created, they
@@ -63,7 +68,12 @@ class Xtooltip extends Xtooltip.Base {
      * been added to a collection by a given name, it will be overwritten.
      */
     static RegisterThemeGroupCollection(ThemeGroupCollection?, CaseSense := false) {
-        return this.ThemeGroupCollection := ThemeGroupCollection ?? XttThemeGroupCollection(CaseSense)
+        if IsSet(ThemeGroupCollection) {
+            this.ThemeGroupCollection := ThemeGroupCollection
+        } else if !this.ThemeGroupCollection {
+            this.ThemeGroupCollection := XttThemeGroupCollection(CaseSense)
+        }
+        return this.ThemeGroupCollection
     }
     /**
      * Registers the XttCollection. When new {@link Xtooltip} objects are created, they
@@ -77,7 +87,11 @@ class Xtooltip extends Xtooltip.Base {
      * been added to a collection by a given name, it will be overwritten.
      */
     static RegisterXttCollection(XttCollectionObj?, CaseSense := false) {
-        return this.XttCollection := XttCollectionObj ?? XttCollection(CaseSense)
+        if IsSet(XttCollectionObj) {
+            this.XttCollection := XttCollectionObj        } else if !this.XttCollection {
+            this.XttCollection := XttCollection(CaseSense)
+        }
+        return this.XttCollection
     }
     /**
      * Calls {@link Xtooltip.DeregisterThemeCollection}, {@link Xtooltip.DeregisterThemeGroupCollection},
@@ -1509,6 +1523,16 @@ class XttTheme extends Xtooltip.Base {
             this.ApplyTitle(Xtt)
         }
     }
+    /**
+     * An alias for {@link XttTheme.Prototype.ApplySelect} added to match the name used by
+     * {@link XttThemeGroup.Prototype.ApplySelection}.
+     * @param {Xtooltip} Xtt - The {@link Xtooltip} object.
+     * @param {Boolean} [Font = false] - If true, {@link XttTheme.Prototype.ApplyFont} will be called.
+     * @param {Boolean} [General = false] - If true, {@link XttTheme.Prototype.ApplyGeneral} will be called.
+     * @param {Boolean} [Margin = false] - If true, {@link XttTheme.Prototype.ApplyMargin} will be called.
+     * @param {Boolean} [Title = false] - If true, {@link XttTheme.Prototype.ApplyTitle} will be called.
+     */
+    ApplySelection(Xtt, Font := false, General := false, Margin := false, Title := false) => this.ApplySelect(Xtt, Font, General, Margin, Title)
     /**
      * @param {Xtooltip} Xtt - The {@link Xtooltip} object.
      */
@@ -3110,4 +3134,3 @@ Static values related to fonts:
 #define RASTER_FONTTYPE     0x0001
 #define DEVICE_FONTTYPE     0x0002
 #define TRUETYPE_FONTTYPE   0x0004
-

@@ -443,6 +443,10 @@ properties instead of the class properties.
 
 # Changelog
 
+- **2025-11-15**: v1.0.3
+  - Add: `XttTheme.Prototype.ApplySelection`, which calls `XttTheme.Prototype.ApplySelect`. Added because
+    I intended for the method to have the same name as `XttThemeGroup.Prototype.ApplySelection`.
+
 - **2025-10-24**: v1.0.2
   - Fix: `CWPRETSTRUCT`, a class used only in test\sandbox.ahk, had a byte alignment error. This is fixed.
 
