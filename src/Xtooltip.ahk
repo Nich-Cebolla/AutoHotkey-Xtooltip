@@ -1791,6 +1791,11 @@ class XttThemeGroup extends Xtooltip.Base {
             Theme.ApplyMargin(xtt)
         }
     }
+    /**
+     * An alias for {@link XttThemeGroup.Prototype.ApplySelection}, added to match the name used by
+     * {@link XttTheme.Prototype.ApplySelect}.
+     */
+    ApplySelect(Theme?, Font := false, General := false, Margin := false, Title := false) => this.ApplySelection(Theme? ?? unset, Font, General, Margin, Title)
     ApplySelection(Theme?, Font := false, General := false, Margin := false, Title := false) {
         if IsSet(Theme) {
             if !IsObject(Theme) {
