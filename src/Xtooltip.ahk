@@ -88,7 +88,8 @@ class Xtooltip extends Xtooltip.Base {
      */
     static RegisterXttCollection(XttCollectionObj?, CaseSense := false) {
         if IsSet(XttCollectionObj) {
-            this.XttCollection := XttCollectionObj        } else if !this.XttCollection {
+            this.XttCollection := XttCollectionObj
+        } else if !this.XttCollection {
             this.XttCollection := XttCollection(CaseSense)
         }
         return this.XttCollection
@@ -1795,7 +1796,7 @@ class XttThemeGroup extends Xtooltip.Base {
      * An alias for {@link XttThemeGroup.Prototype.ApplySelection}, added to match the name used by
      * {@link XttTheme.Prototype.ApplySelect}.
      */
-    ApplySelect(Theme?, Font := false, General := false, Margin := false, Title := false) => this.ApplySelection(Theme? ?? unset, Font, General, Margin, Title)
+    ApplySelect(Theme?, Font := false, General := false, Margin := false, Title := false) => this.ApplySelection(Theme ?? unset, Font, General, Margin, Title)
     ApplySelection(Theme?, Font := false, General := false, Margin := false, Title := false) {
         if IsSet(Theme) {
             if !IsObject(Theme) {
