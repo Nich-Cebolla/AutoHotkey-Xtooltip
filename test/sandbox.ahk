@@ -85,7 +85,6 @@ class Demo {
         DemoEditWidth := 200
         paddingY := 15
         paddingX := 10
-        tabs := this.Tabs := ['Modify', 'Create']
         EdtInputTextWidth := lbToolsWidth := lbXtooltipWidth := 200
         lbXtooltipRows := 6
         lbToolsRows := 10
@@ -171,6 +170,8 @@ class Demo {
             edits[-1].GetPos(, , , &edth)
             y += edth + paddingY
         }
+
+        y += txth + paddingY
 
         this.MakeButtonXtooltip(buttons)
 
@@ -390,6 +391,7 @@ class DemoEventHandler {
             g['EdtInputText'].Text := xtt.GetText(lb.Text)
             xttPreview.UpdateTipText(g['EdtInputText'].Text, 0)
             xttPreview.BackColor := xtt.BackColor
+            xttPreview.CornerPreference := xtt.CornerPreference
             xttPreview.TextColor := xtt.TextColor
             xtt.Font.Clone(xttPreview.Font, , false)
             xttPreview.Font.Apply()
@@ -432,7 +434,7 @@ class DemoEventHandler {
             xtt := Xtooltip.XttCollection.Get(g['LbXtooltips'].Text)
             if InStr(',Escapement,Italic,FaceName,Quality,FontSize,Strikeout,Underline,Weight,', ',' prop ',') {
                 edt.Text := xtt.Font.%prop%
-            } else if InStr(',BackColor,MaxWidth,TextColor,', ',' prop ',') {
+            } else if InStr(',BackColor,CornerPreference,MaxWidth,TextColor,', ',' prop ',') {
                 edt.Text := xtt.%prop%
             } else if InStr(prop, 'Margin') {
                 edt.Text := xtt.GetMargin().%SubStr(prop, -1, 1)%
@@ -473,7 +475,7 @@ class DemoEventHandler {
                 xtt.Font.%prop% := edt.Text
                 xtt.Font.Apply()
             }
-        } else if InStr(',BackColor,MaxWidth,TextColor,', ',' prop ',') {
+        } else if InStr(',BackColor,CornerPreference,MaxWidth,TextColor,', ',' prop ',') {
             xttPreview.%prop% := edt.Text
             if IsSet(xtt) {
                 xtt.%prop% := edt.Text
@@ -650,6 +652,9 @@ class DemoStrings {
     ]
     static InputEdits := Map(
         'BackColor', 'Input as COLORREF or type "RGB(n, n, n)"'
+      , 'CornerPreference', 'Input an integer between 0 and 3, inclusive. If changing the corner '
+        'preference causes a display artifact by the bottom-right corner of the preview tooltip, '
+        'minimize then restore the window.'
       , 'Escapement', 'Tenths of degrees'
       , 'FaceName', 'Font name, e.g. "Roboto", "Consolas"'
       , 'FontSize', 'Points'
@@ -781,17 +786,15 @@ MakeInputControlGroup(G, PropList, Options) {
     return controls
 }
 
-
 HOOKPROC(code, wParam, lParam) {
     try {
+        Critical(-1)
         cwpret := CWPRETSTRUCT(lParam)
         switch cwpret.Message {
-            case 71:
-                MoveXttPreview()
+            case 71: MoveXttPreview()
         }
-    } catch {
-        DllCall('UnhookWindowsHookEx', 'ptr', g_windowHookHandle, 'int')
-        return 0
+    } catch Error as err {
+        OutputDebug(err.Message '`n')
     }
     return DllCall(
         'CallNextHookEx'
@@ -830,33 +833,33 @@ class CWPRETSTRUCT {
         this.ptr := ptr
     }
     lResult {
-        Get => NumGet(this.Buffer, this.offset_lResult, 'ptr')
+        Get => NumGet(this, this.offset_lResult, 'ptr')
         Set {
-            NumPut('ptr', Value, this.Buffer, this.offset_lResult)
+            NumPut('ptr', Value, this, this.offset_lResult)
         }
     }
     lParam {
-        Get => NumGet(this.Buffer, this.offset_lParam, 'ptr')
+        Get => NumGet(this, this.offset_lParam, 'ptr')
         Set {
-            NumPut('ptr', Value, this.Buffer, this.offset_lParam)
+            NumPut('ptr', Value, this, this.offset_lParam)
         }
     }
     wParam {
-        Get => NumGet(this.Buffer, this.offset_wParam, 'ptr')
+        Get => NumGet(this, this.offset_wParam, 'ptr')
         Set {
-            NumPut('ptr', Value, this.Buffer, this.offset_wParam)
+            NumPut('ptr', Value, this, this.offset_wParam)
         }
     }
     message {
-        Get => NumGet(this.Buffer, this.offset_message, 'uint')
+        Get => NumGet(this, this.offset_message, 'uint')
         Set {
-            NumPut('uint', Value, this.Buffer, this.offset_message)
+            NumPut('uint', Value, this, this.offset_message)
         }
     }
     hwnd {
-        Get => NumGet(this.Buffer, this.offset_hwnd, 'ptr')
+        Get => NumGet(this, this.offset_hwnd, 'ptr')
         Set {
-            NumPut('ptr', Value, this.Buffer, this.offset_hwnd)
+            NumPut('ptr', Value, this, this.offset_hwnd)
         }
     }
 }
