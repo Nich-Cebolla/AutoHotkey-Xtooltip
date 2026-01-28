@@ -41,6 +41,7 @@ does not provide tools for customizing the window or its behavior.
 - Create [theme groups](#theme-groups) to group together tooltips and themes to keep your code organized.
 - Customize all available attributes:
   - Background color
+  - Corner preference (rounded corners)
   - Font
     - Escapement
     - Face name
@@ -193,6 +194,11 @@ If `Options.Theme` or `Options.ThemeGroup` are set, all other customization opti
 - **{ Boolean }** [ `Options.AlwaysOnTop = true` ] - If true, the WS_EX_TOPMOST flag is added to the extended style flags.
 - **{ Integer }** [ `Options.BackColor` ] - The COLORREF representing the background color. Use `XttRgb(r, g, b)` to
 convert RGB to COLORREF.
+- **{ Integer }** [ `Options.CornerPreference` ] - One of the following:
+  - DWMWCP_DEFAULT = 0
+  - DWMWCP_DONOTROUND = 1
+  - DWMWCP_ROUND = 2
+  - DWMWCP_ROUNDSMALL = 3
 - **{ Float }** [ `Options.Escapement = 0` ] - The font escapement.
 - **{ Integer }** [ `Options.ExStyle = WS_EX_NOACTIVATE` ] - Extended window style flags.
 - **{ String }** [ `Options.FaceName` ] - The font name to use.
@@ -442,6 +448,11 @@ To this end, I recommend you write your code to always access the collections vi
 properties instead of the class properties.
 
 # Changelog
+
+- **2026-01-27**: v1.0.5
+  - Add: `Options.CornerPreference` - Calls [DwmSetWindowAttribute](https://learn.microsoft.com/en-us/windows/win32/api/dwmapi/nf-dwmapi-dwmsetwindowattribute)
+      to modify the [DWM_WINDOW_CORNER_PREFERENCE](https://learn.microsoft.com/en-us/windows/win32/api/dwmapi/ne-dwmapi-dwm_window_corner_preference)
+      value.
 
 - **2025-11-15**: v1.0.4
   - `XttThemeGroup.Prototype.ApplySelect`, which calls `XttThemeGroup.Prototype.ApplySelection`. Added because
