@@ -137,8 +137,8 @@ class Xtooltip extends Xtooltip.Base {
         this.XttCollection := ''
     }
     /**
-     * @param {ToolInfo.Params|Object} tiParams - Either a {@link XttToolInfo.Params} object, or an object
-     * that will be pass to {@link XttToolInfo.Params}.
+     * @param {Object} [Options] - An object with options as property : value pairs.
+     *
      * If `Options.Theme` or `Options.ThemeGroup` are set, all other customization options are ignored.
      * `Options.Theme` supercedes `Options.ThemeGroup`.
      *
