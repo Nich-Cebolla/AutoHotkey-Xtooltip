@@ -219,7 +219,7 @@ class Xtooltip extends Xtooltip.Base {
               , 'ptr'
             )
             if hresult := DllCall('UxTheme.dll\SetWindowTheme', 'ptr', hwnd, 'ptr', 0, 'str', '', 'uint') {
-                throw OSError('``SetWindowTheme`` failed.', -1, hresult)
+                throw OSError('``SetWindowTheme`` failed.', , hresult)
             }
             this.__Name := Options.Name
             lf := this.Font := XttLogfont(hwnd)
@@ -314,7 +314,7 @@ class Xtooltip extends Xtooltip.Base {
               , 'ptr', 0                        ; lpParam
             )
             if hresult := DllCall('UxTheme.dll\SetWindowTheme', 'ptr', hwnd, 'ptr', 0, 'str', '', 'uint') {
-                throw OSError('``SetWindowTheme`` failed.', -1, hresult)
+                throw OSError('``SetWindowTheme`` failed.', , hresult)
             }
             lf := this.Font := XttLogfont(hwnd)
             if this.XttCollection {
@@ -842,7 +842,7 @@ class Xtooltip extends Xtooltip.Base {
             this.GetCurrentTool(&ti)
             return ti
         } else {
-            throw Error('The tooltip does not have an active tool.', -1)
+            throw Error('The tooltip does not have an active tool.')
         }
     }
     /**
@@ -1021,7 +1021,7 @@ class Xtooltip extends Xtooltip.Base {
             } else {
                 ; If you get this, you need to call the static method `Xtooltip.RegisterThemeCollection`
                 ; before you can refer to a theme by name
-                throw Error('An Xtooltip theme collection has not been registered.', -1)
+                throw Error('An Xtooltip theme collection has not been registered.')
             }
         }
         Theme.Apply(this)
@@ -1038,7 +1038,7 @@ class Xtooltip extends Xtooltip.Base {
                 ThemeGroup := collection.Get(ThemeGroup)
             } else {
                 ; If you get this error, call the static method `Xtooltip.RegisterThemeGroupCollection`.
-                throw Error('You must register a theme group collection before being able to reference a group by name.', -1)
+                throw Error('You must register a theme group collection before being able to reference a group by name.')
             }
         }
         this.ThemeGroupName := ThemeGroup.Name
@@ -1433,7 +1433,7 @@ class XttTheme extends Xtooltip.Base {
         ',OutPrecision,Pitch,Quality,FontSize,Strikeout,Underline,Weight,', ',' OptionName ',') {
             return 'Font'
         }
-        throw ValueError('The option name is invalid.', -1, Trim(OptionName, ','))
+        throw ValueError('The option name is invalid.', , Trim(OptionName, ','))
     }
     static RegisterDefault(DefaultOptions) {
         this.Prototype.Default := DefaultOptions
@@ -1904,7 +1904,7 @@ class XttThemeGroup extends Xtooltip.Base {
                 Theme := this.ThemeCollection.Get(Theme)
                 this.Themes.Set(Theme.__Name, Theme)
             } else {
-                throw Error('Unable to find a theme with the input name.', -1, Theme)
+                throw Error('Unable to find a theme with the input name.', , Theme)
             }
         }
         if this.Xtooltips.Count {
@@ -2056,7 +2056,7 @@ class XttToolInfo {
         } else if IsSet(BufferSize) {
             this.TextBuffer := Buffer(BufferSize)
         } else {
-            throw TypeError('An input value is required.', -1)
+            throw TypeError('An input value is required.')
         }
         NumPut('ptr', this.TextBuffer.Ptr, this, this.offset_lpszText)
     }
@@ -2235,14 +2235,14 @@ class XttToolInfo {
                         ; If you get this error, you must set "hwnd" with the handle to the parent
                         ; of "uId". If "uId" does not have a parent window, then set "hwnd" to the same
                         ; value as "uId".
-                        throw PropertyError('The flag ``TTF_IDISHWND`` in use, but the property "hwnd" is unset.', -1)
+                        throw PropertyError('The flag ``TTF_IDISHWND`` in use, but the property "hwnd" is unset.')
                     }
                     if !HasProp(Params, 'uId') {
                         ; If you get this error, you must set "uId" with the handle to the window that
                         ; is the tool that this `XttToolInfo` object represents. For example, by passing
                         ; a `Gui.Control` object to `Xtooltip.Prototype.GetToolControl` or to
                         ; `Xtooltip.Prototype.GetToolWindow`.
-                        throw PropertyError('The flag ``TTF_IDISHWND`` in use, but the property "uId" is unset.', -1)
+                        throw PropertyError('The flag ``TTF_IDISHWND`` in use, but the property "uId" is unset.')
                     }
                 }
             }
@@ -2266,7 +2266,7 @@ class XttToolInfo {
             }
             switch ct {
                 case 0,  4: ; do nothing
-                default: throw PropertyError('If at least one of properties "L", "T", "R", or "B", is set, then all four must be set.', -1)
+                default: throw PropertyError('If at least one of properties "L", "T", "R", or "B", is set, then all four must be set.')
             }
             for prop in ['hInst', 'lParam', 'uId'] {
                 if HasProp(Params, prop) {
@@ -2341,7 +2341,7 @@ class XttRect {
           , 'uint', rc.Size
           , 'uint'
         ) {
-            throw OsError('DwmGetWindowAttribute failed.', -1, hresult)
+            throw OsError('DwmGetWindowAttribute failed.', , hresult)
         }
         return rc
     }
@@ -2425,7 +2425,7 @@ class TtGetTitle {
     }
     Call(MaxChars := XTT_DEFAULT_TITLEMAXCHARS, &OutIcon?) {
         if !WinExist(this.Hwnd) {
-            throw Error('The window no longer exists.', -1)
+            throw Error('The window no longer exists.')
         }
         if !this.HasOwnProp('TextBuffer') || this.TextBuffer.Size < MaxChars * 2 {
             this.SetTextBuffer(MaxChars)
@@ -2515,13 +2515,13 @@ class XttCollectionBase extends Map {
 
 class XttErrors {
     static ThrowThemeGroupNoThemeName() {
-        throw Error('A theme must be set with a name to be added to a theme group.', -1)
+        throw Error('A theme must be set with a name to be added to a theme group.')
     }
     static ThrowChildThemeNoName() {
-        throw Error('A theme must be set with a name to be made a child of another theme.', -1)
+        throw Error('A theme must be set with a name to be made a child of another theme.')
     }
     static ThrowTrackingError() {
-        throw Error('Only one tracking tool can be added to an Xtooltip at a time.', -1)
+        throw Error('Only one tracking tool can be added to an Xtooltip at a time.')
     }
 }
 
@@ -2630,7 +2630,7 @@ class XttLogfont {
     Call(*) {
         hFont := SendMessage(WM_GETFONT,,, this.Hwnd)
         if !DllCall('Gdi32.dll\GetObject', 'ptr', hFont, 'int', this.Size, 'ptr', this, 'uint') {
-            throw OSError('Failed to get font object.', -1)
+            throw OSError('Failed to get font object.')
         }
     }
     /**
@@ -2656,13 +2656,13 @@ class XttLogfont {
     Clone(Buf?, Offset := 0, MakeInstance := true) {
         if IsSet(Buf) {
             if not Buf is Buffer && not Buf is XttLogFont {
-                throw TypeError('Invalid input parameter ``Buf``.', -1)
+                throw TypeError('Invalid input parameter ``Buf``.')
             }
         } else {
             Buf := Buffer(this.Size + Offset)
         }
         if Buf.Size < this.Size + Offset {
-            throw Error('The input buffer`'s size is insufficient.', -1, Buf.Size)
+            throw Error('The input buffer`'s size is insufficient.', , Buf.Size)
         }
         DllCall(
             'msvcrt.dll\memmove'
@@ -2679,7 +2679,7 @@ class XttLogfont {
                         break
                     }
                 } else {
-                    throw Error('Unable to identify the prototype object.', -1)
+                    throw Error('Unable to identify the prototype object.')
                 }
             }
             Obj := { Buffer: Buf }
@@ -3046,7 +3046,7 @@ XttSetThreadDpiAwareness__Call(Obj, Name, Params) {
             return Obj.%Split[1]%()
         }
     } else {
-        throw PropertyError('Property not found.', -1, Name)
+        throw PropertyError('Property not found.', , Name)
     }
 }
 
