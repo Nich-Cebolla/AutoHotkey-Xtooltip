@@ -13,6 +13,7 @@ class Xtooltip extends Xtooltip.Base {
         proto := this.Prototype
         Proto.DefineProp('__Call', { Call: XttSetThreadDpiAwareness__Call })
         Proto.ThemeGroupName := Proto.__Theme := Proto.__Name := Proto.Hwnd := Proto.Font := ''
+        proto.__CornerPreference := 0
         Proto.TitleSize := 0
     }
     /**
@@ -147,6 +148,11 @@ class Xtooltip extends Xtooltip.Base {
      * @param {Boolean} [Options.AlwaysOnTop = true] - If true, the WS_EX_TOPMOST flag is added to the extended style flags.
      * @param {Integer} [Options.BackColor] - The COLORREF representing the background color. Use `XttRgb(r, g, b)` to
      * convert RGB to COLORREF.
+     * @param {Integer} [Options.CornerPreference = 0] - One of the following:
+     * - DWMWCP_DEFAULT = 0
+     * - DWMWCP_DONOTROUND = 1
+     * - DWMWCP_ROUND = 2
+     * - DWMWCP_ROUNDSMALL = 3
      * @param {Float} [Options.Escapement = 0] - The font escapement.
      * @param {Integer} [Options.ExStyle = WS_EX_NOACTIVATE] - Extended window style flags.
      * @param {String} [Options.FaceName] - The font name to use.
@@ -886,6 +892,21 @@ class Xtooltip extends Xtooltip.Base {
         SendMessage(TTM_SETTIPBKCOLOR, Color, 0, this.Hwnd)
     }
     /**
+     * @description - Calls
+     * {@link https://learn.microsoft.com/en-us/windows/win32/api/dwmapi/nf-dwmapi-dwmsetwindowattribute}
+     * with DWMWA_WINDOW_CORNER_PREFERENCE to set the corner preference.
+     */
+    SetCornerPreference(Value) {
+        if Value >= 0 && Value <= 3 {
+            this.__CornerPreference := Value
+            if hresult := DllCall('dwmapi.dll\DwmSetWindowAttribute', 'ptr', this.Hwnd, 'uint', 33, 'ptr*', Value, 'uint', 4, 'uint') {
+                throw OSError('``DwmSetWindowAttribute`` failed with HRESULT: ' Format('{:X}', hresult))
+            }
+        } else {
+            throw ValueError('The corner preference value must be an integer between 0 and 3, inclusive.', , Value)
+        }
+    }
+    /**
      * Sends {@link https://learn.microsoft.com/en-us/windows/win32/controls/ttm-settipbkcolor TTM_SETTIPBKCOLOR}.
      * Also see {@link Xtooltip.Prototype.SetBackColor}.
      * @param {Integer} R - The 0-255 red value.
@@ -1232,6 +1253,10 @@ class Xtooltip extends Xtooltip.Base {
         Get => this.GetBackColor()
         Set => this.SetBackColor(Value)
     }
+    CornerPreference {
+        Get => this.__CornerPreference
+        Set => this.SetCornerPreference(Value)
+    }
     Dpi => this.Font.Dpi
     MaxWidth {
         Get => SendMessage(TTM_GETMAXTIPWIDTH, , , , this.Hwnd)
@@ -1286,6 +1311,7 @@ class Xtooltip extends Xtooltip.Base {
               , AddStyle: ''
               , AlwaysOnTop: true
               , BackColor: ''
+              , CornerPreference: 0
               , Escapement: 0
               , ExStyle: WS_EX_NOACTIVATE
               , FaceName: ''
@@ -1344,7 +1370,7 @@ class XttTheme extends Xtooltip.Base {
           , 'Italic', 'FaceName', 'OutPrecision', 'Pitch', 'Height'
           , 'Quality', 'FontSize', 'Strikeout', 'Underline', 'Weight'
         ]
-        this.ListGeneral := [ 'BackColor', 'MaxWidth', 'TextColor' ]
+        this.ListGeneral := [ 'BackColor', 'CornerPreference', 'MaxWidth', 'TextColor' ]
         this.ListMargin := [ 'L', 'T', 'R', 'B' ]
         this.ListTitle := [ 'Icon', 'Title' ]
         proto := this.Prototype
@@ -1400,7 +1426,7 @@ class XttTheme extends Xtooltip.Base {
         if InStr(',Icon,Title,', OptionName) {
             return 'Title'
         }
-        if InStr(',BackColor,MaxWidth,TextColor,', OptionName) {
+        if InStr(',BackColor,CornerPreference,MaxWidth,TextColor,', OptionName) {
             return 'General'
         }
         if InStr(',CharSet,ClipPrecision,Escapement,Family,Italic,FaceName,Orientation'
@@ -1424,6 +1450,7 @@ class XttTheme extends Xtooltip.Base {
      * to an {@link Xtooltip} object, that option is no changed; the current value on the object
      * is maintained.
      *  - BackColor
+     *  - CornerPreference
      *  - Font : `Options.Font` can be an {@link XttLogfont} object, or include any of the following
      *    properties on `Options`. If none of the font options are included, the theme will not include
      *    a font object; whenever the theme is applied, the {@link Xtooltip} object's current font
@@ -1675,6 +1702,10 @@ class XttTheme extends Xtooltip.Base {
     BackColor {
         Get => StrLen(this.__BackColor) ? this.__BackColor : this.Default.__BackColor
         Set => this.__BackColor := Value
+    }
+    CornerPreference {
+        Get => this.__CornerPreference
+        Set => this.__CornerPreference := Value
     }
     Font {
         Get => this.__Font ? this.__Font : this.Default.__Font
