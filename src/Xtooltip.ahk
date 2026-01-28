@@ -2707,12 +2707,6 @@ class XttLogfont {
         this.%Name% := Value
         this.Apply()
     }
-    __Delete() {
-        if this.Handle {
-            DllCall('DeleteObject', 'ptr', this.Handle)
-            this.Handle := 0
-        }
-    }
     /**
      * Gets or sets the character set.
      * @memberof XttLogfont
