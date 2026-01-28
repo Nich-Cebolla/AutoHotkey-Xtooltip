@@ -451,8 +451,9 @@ properties instead of the class properties.
 
 - **2026-01-27**: v1.0.5
   - Add: `Options.CornerPreference` - Calls [DwmSetWindowAttribute](https://learn.microsoft.com/en-us/windows/win32/api/dwmapi/nf-dwmapi-dwmsetwindowattribute)
-      to modify the [DWM_WINDOW_CORNER_PREFERENCE](https://learn.microsoft.com/en-us/windows/win32/api/dwmapi/ne-dwmapi-dwm_window_corner_preference)
-      value.
+    to modify the [DWM_WINDOW_CORNER_PREFERENCE](https://learn.microsoft.com/en-us/windows/win32/api/dwmapi/ne-dwmapi-dwm_window_corner_preference)
+    value.
+  - Change: Thrown errors no longer pass `-1` to the `what` parameter of the `Error` object constructor.
 
 - **2025-11-15**: v1.0.4
   - `XttThemeGroup.Prototype.ApplySelect`, which calls `XttThemeGroup.Prototype.ApplySelection`. Added because
