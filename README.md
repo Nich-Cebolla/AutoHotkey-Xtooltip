@@ -387,7 +387,7 @@ themeGroup.ToggleLightMode()
 
 # Constants
 
-The following are some constant values related to tooltips.
+The following are some constant values related to fonts, to be used with the `XttLogfont` class.
 
 ## Output precision
 
