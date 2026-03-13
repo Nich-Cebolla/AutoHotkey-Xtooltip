@@ -334,7 +334,7 @@ class Demo {
         }
         lb.Add(list)
 
-        this.WindowsHook := WindowsHook(12, HOOKPROC, , , true)
+        this.WindowsHook := WindowsHook(12, HOOKPROC, , , true) ; WH_CALLWNDPROCRET
         global g_windowHookHandle := this.WindowsHook.Handle
 
         g['EdtError'].GetPos(, &sliy, , &slih)
@@ -786,11 +786,18 @@ MakeInputControlGroup(G, PropList, Options) {
     return controls
 }
 
+ParseColorRef(colorref, &OutR?, &OutG?, &OutB?) {
+    OutR := colorref & 0xFF
+    OutG := (colorref >> 8) & 0xFF
+    OutB := (colorref >> 16) & 0xFF
+}
+
 HOOKPROC(code, wParam, lParam) {
     try {
         Critical(-1)
         cwpret := CWPRETSTRUCT(lParam)
         switch cwpret.Message {
+            ; WM_WINDOWPOSCHANGED
             case 71: MoveXttPreview()
         }
     } catch Error as err {
@@ -804,12 +811,6 @@ HOOKPROC(code, wParam, lParam) {
       , 'ptr', lParam
       , 'ptr'
     )
-}
-
-ParseColorRef(colorref, &OutR?, &OutG?, &OutB?) {
-    OutR := colorref & 0xFF
-    OutG := (colorref >> 8) & 0xFF
-    OutB := (colorref >> 16) & 0xFF
 }
 
 class CWPRETSTRUCT {
@@ -862,43 +863,6 @@ class CWPRETSTRUCT {
             NumPut('ptr', Value, this, this.offset_hwnd)
         }
     }
-}
-
-class WindowPos {
-    static __New() {
-        this.DeleteProp('__New')
-        this.Prototype.Size :=
-        A_PtrSize +     ; HWND     hwnd
-        A_PtrSize +     ; HWND     hwndInsertAfter
-        4 +             ; int      x
-        4 +             ; int      y
-        4 +             ; int      cx
-        4 +             ; int      cy
-        4               ; UINT     flags
-    }
-    __New(Ptr) {
-        this.Ptr := Ptr
-    }
-    Hwnd => NumGet(this, 0, 'ptr')
-    HwndInsertAfter => NumGet(this, A_PtrSize, 'ptr')
-    X => NumGet(this, A_PtrSize * 2, 'int')
-    Y => NumGet(this, A_PtrSize * 2 + 4, 'int')
-    W => NumGet(this, A_PtrSize * 2 + 8, 'int')
-    H => NumGet(this, A_PtrSize * 2 + 12, 'int')
-    Flags => NumGet(this, A_PtrSize * 2 + 16, 'uint')
-    Drawframe => this.Flags & 0x0020
-    Framechanged => this.Flags & 0x0020
-    Hidewindow => this.Flags & 0x0080
-    Noactivate => this.Flags & 0x0010
-    Nocopybits => this.Flags & 0x0100
-    Nomove => this.Flags & 0x0002
-    Noownerzorder => this.Flags & 0x0200
-    Noredraw => this.Flags & 0x0008
-    Noreposition => this.Flags & 0x0200
-    Nosendchanging => this.Flags & 0x0400
-    Nosize => this.Flags & 0x0001
-    Nozorder => this.Flags & 0x0004
-    Showwindow => this.Flags & 0x0040
 }
 
 /*
