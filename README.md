@@ -1,7 +1,8 @@
 # Table of contents
 
 <ol type="I">
-  <li><a href="#xtooltip---v102">Xtooltip</a></li>
+  <li><a href="#table-of-contents">Table of contents</a></li>
+  <li><a href="#xtooltip---v102">Xtooltip - v1.0.2</a></li>
   <li><a href="#autohotkeycom-link">AutoHotkey.com link</a></li>
   <li><a href="#redditcom-link">Reddit.com link</a></li>
   <li><a href="#quick-start">Quick start</a></li>
@@ -13,6 +14,17 @@
   </ol>
   <li><a href="#theme-groups">Theme groups</a></li>
   <li><a href="#constants">Constants</a></li>
+  <ol type="A">
+    <li><a href="#output-precision">Output precision</a></li>
+    <li><a href="#clip-precision">Clip precision</a></li>
+    <li><a href="#quality">Quality</a></li>
+    <li><a href="#pitch">Pitch</a></li>
+    <li><a href="#charset-character-set">Charset (character set)</a></li>
+    <li><a href="#font-script-character-set">Font script (character set)</a></li>
+    <li><a href="#font-family">Font family</a></li>
+    <li><a href="#font-weight">Font weight</a></li>
+    <li><a href="#font-type">Font type</a></li>
+  </ol>
   <li><a href="#collections">Collections</a></li>
   <li><a href="#changelog">Changelog</a></li>
 </ol>
@@ -377,6 +389,8 @@ themeGroup.ToggleLightMode()
 
 The following are some constant values related to tooltips.
 
+## Output precision
+
 |  Name                       |  Value       |
 |  ---------------------------|------------  |
 |  OUT_DEFAULT_PRECIS         |  0           |
@@ -390,6 +404,11 @@ The following are some constant values related to tooltips.
 |  OUT_OUTLINE_PRECIS         |  8           |
 |  OUT_SCREEN_OUTLINE_PRECIS  |  9           |
 |  OUT_PS_ONLY_PRECIS         |  10          |
+
+## Clip precision
+
+|  Name                       |  Value       |
+|  -------------------------  |  ----------  |
 |  CLIP_DEFAULT_PRECIS        |  0           |
 |  CLIP_CHARACTER_PRECIS      |  1           |
 |  CLIP_STROKE_PRECIS         |  2           |
@@ -398,6 +417,11 @@ The following are some constant values related to tooltips.
 |  CLIP_TT_ALWAYS             |  32          |
 |  CLIP_DFA_DISABLE           |  64          |
 |  CLIP_EMBEDDED              |  128         |
+
+## Quality
+
+|  Name                       |  Value       |
+|  -------------------------  |  ----------  |
 |  DEFAULT_QUALITY            |  0           |
 |  DRAFT_QUALITY              |  1           |
 |  PROOF_QUALITY              |  2           |
@@ -405,10 +429,20 @@ The following are some constant values related to tooltips.
 |  ANTIALIASED_QUALITY        |  4           |
 |  CLEARTYPE_QUALITY          |  5           |
 |  CLEARTYPE_NATURAL_QUALITY  |  6           |
+
+## Pitch
+
+|  Name                       |  Value       |
+|  -------------------------  |  ----------  |
 |  DEFAULT_PITCH              |  0           |
 |  FIXED_PITCH                |  1           |
 |  VARIABLE_PITCH             |  2           |
 |  MONO_FONT                  |  8           |
+
+## Charset (character set)
+
+|  Name                       |  Value       |
+|  -------------------------  |  ----------  |
 |  ANSI_CHARSET               |  0           |
 |  DEFAULT_CHARSET            |  1           |
 |  SYMBOL_CHARSET             |  2           |
@@ -429,6 +463,11 @@ The following are some constant values related to tooltips.
 |  RUSSIAN_CHARSET            |  204         |
 |  MAC_CHARSET                |  77          |
 |  BALTIC_CHARSET             |  186         |
+
+## Font script (character set)
+
+|  Name                       |  Value       |
+|  -------------------------  |  ----------  |
 |  FS_LATIN1                  |  0x00000001  |
 |  FS_LATIN2                  |  0x00000002  |
 |  FS_CYRILLIC                |  0x00000004  |
@@ -445,12 +484,22 @@ The following are some constant values related to tooltips.
 |  FS_CHINESETRAD             |  0x00100000  |
 |  FS_JOHAB                   |  0x00200000  |
 |  FS_SYMBOL                  |  0x80000000  |
+
+## Font family
+
+|  Name                       |  Value       |
+|  -------------------------  |  ----------  |
 |  FF_DONTCARE                |  0           |
 |  FF_ROMAN                   |  16          |
 |  FF_SWISS                   |  32          |
 |  FF_MODERN                  |  48          |
 |  FF_SCRIPT                  |  64          |
 |  FF_DECORATIVE              |  80          |
+
+## Font weight
+
+|  Name                       |  Value       |
+|  -------------------------  |  ----------  |
 |  FW_DONTCARE                |  0           |
 |  FW_THIN                    |  100         |
 |  FW_EXTRALIGHT              |  200         |
@@ -461,6 +510,13 @@ The following are some constant values related to tooltips.
 |  FW_BOLD                    |  700         |
 |  FW_EXTRABOLD               |  800         |
 |  FW_HEAVY                   |  900         |
+
+## Font type
+
+See https://learn.microsoft.com/en-us/previous-versions/dd162618(v=vs.85)
+
+|  Name                       |  Value       |
+|  -------------------------  |  ----------  |
 |  RASTER_FONTTYPE            |  0x0001      |
 |  DEVICE_FONTTYPE            |  0x0002      |
 |  TRUETYPE_FONTTYPE          |  0x0004      |
