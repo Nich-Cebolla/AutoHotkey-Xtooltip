@@ -215,7 +215,7 @@ class Xtooltip extends Xtooltip.Base {
               , 'ptr', Options.Param        ; lpParam
               , 'ptr'
             )
-            if hresult := DllCall('UxTheme.dll\SetWindowTheme', 'ptr', hwnd, 'ptr', 0, 'str', '', 'uint') {
+            if hresult := DllCall(g_uxtheme_SetWindowTheme, 'ptr', hwnd, 'ptr', 0, 'str', '', 'uint') {
                 throw OSError('``SetWindowTheme`` failed.', , hresult)
             }
             this.__Name := Options.Name
@@ -310,7 +310,7 @@ class Xtooltip extends Xtooltip.Base {
               , 'ptr', 0                        ; hInstance
               , 'ptr', 0                        ; lpParam
             )
-            if hresult := DllCall('UxTheme.dll\SetWindowTheme', 'ptr', hwnd, 'ptr', 0, 'str', '', 'uint') {
+            if hresult := DllCall(g_uxtheme_SetWindowTheme, 'ptr', hwnd, 'ptr', 0, 'str', '', 'uint') {
                 throw OSError('``SetWindowTheme`` failed.', , hresult)
             }
             lf := this.Font := XttLogfont(hwnd)
@@ -426,12 +426,18 @@ class Xtooltip extends Xtooltip.Base {
      * @returns {ToolInfo}
      */
     AddControlRect(Key, Text, Ctrl, uId?) {
-        rc := XttRect.Client(Ctrl.Hwnd)
+        rc := XttRect.Window(Ctrl.Hwnd)
+        if !DllCall(g_user32_ScreenToClient, 'ptr', Ctrl.Gui.Hwnd, 'ptr', rc, 'int') {
+            throw OSError()
+        }
+        if !DllCall(g_user32_ScreenToClient, 'ptr', Ctrl.Gui.Hwnd, 'ptr', rc.Ptr + 8, 'int') {
+            throw OSError()
+        }
         return this.__AddTool(
             Key
           , {
                 HwndXtt: this.Hwnd
-              , hwnd: Ctrl.Hwnd
+              , hwnd: Ctrl.Gui.Hwnd
               , uId: uId ?? XttToolInfo.GetUid()
               , uFlags: TTF_SUBCLASS
               , L: rc.L
@@ -576,7 +582,7 @@ class Xtooltip extends Xtooltip.Base {
             Key
           , {
                 HwndXtt: this.Hwnd
-              , Hwnd: DllCall('GetAncestor', 'ptr', hwnd, 'uint', 1, 'ptr') || hwnd
+              , Hwnd: DllCall(g_user32_GetAncestor, 'ptr', hwnd, 'uint', 1, 'ptr') || hwnd
               , uId: hwnd
               , uFlags: TTF_IDISHWND | TTF_SUBCLASS
               , StrLen: StrLen(Text)
@@ -645,7 +651,7 @@ class Xtooltip extends Xtooltip.Base {
                 }
             }
             if WinExist(hwnd) {
-                DllCall('DestroyWindow', 'ptr', hwnd, 'int')
+                DllCall(g_user32_DestroyWindow, 'ptr', hwnd, 'int')
             }
             this.DeleteProp('Hwnd')
         }
@@ -896,7 +902,7 @@ class Xtooltip extends Xtooltip.Base {
     SetCornerPreference(Value) {
         if Value >= 0 && Value <= 3 {
             this.__CornerPreference := Value
-            if hresult := DllCall('dwmapi.dll\DwmSetWindowAttribute', 'ptr', this.Hwnd, 'uint', 33, 'ptr*', Value, 'uint', 4, 'uint') {
+            if hresult := DllCall(g_dwmapi_DwmSetWindowAttribute, 'ptr', this.Hwnd, 'uint', 33, 'ptr*', Value, 'uint', 4, 'uint') {
                 throw OSError('``DwmSetWindowAttribute`` failed with HRESULT: ' Format('{:X}', hresult))
             }
         } else {
@@ -1180,7 +1186,7 @@ class Xtooltip extends Xtooltip.Base {
      */
     TrackActivateByMouse(Key, OffsetX := 0, OffsetY := 0) {
         pt := Buffer(8)
-        DllCall('GetCursorPos', 'ptr', pt, 'int')
+        DllCall(g_user32_GetCursorPos, 'ptr', pt, 'int')
         SendMessage(TTM_TRACKPOSITION, 0, ((NumGet(pt, 4, 'int') + OffsetY) << 16) | ((NumGet(pt, 0, 'int') + OffsetX) & 0xFFFF), this.Hwnd)
         ti := this.Tools.Get(Key).Call()
         SendMessage(TTM_TRACKACTIVATE, true, ti.Ptr, this.Hwnd)
@@ -1200,7 +1206,7 @@ class Xtooltip extends Xtooltip.Base {
      */
     TrackPositionByMouse(OffsetX := 0, OffsetY := 0) {
         pt := Buffer(8)
-        DllCall('GetCursorPos', 'ptr', pt, 'int')
+        DllCall(g_user32_GetCursorPos, 'ptr', pt, 'int')
         SendMessage(TTM_TRACKPOSITION, 0, ((NumGet(pt, 4, 'int') + OffsetY) << 16) | ((NumGet(pt, 0, 'int') + OffsetX) & 0xFFFF), this.Hwnd)
     }
     /**
@@ -1377,7 +1383,7 @@ class Xtooltip extends Xtooltip.Base {
         Set => this.SetTitle(Value)
     }
     Visible {
-        Get => DllCall('IsWindowVisible', 'Ptr', this.Hwnd, 'int')
+        Get => DllCall(g_user32_IsWindowVisible, 'Ptr', this.Hwnd, 'int')
         Set {
             if Value {
                 SendMessage(TTM_POPUP, 0, 0,  , this.Hwnd)
@@ -2126,7 +2132,7 @@ class XttThemeGroup extends Xtooltip.Base {
      * value of property {@link XttThemeGroup#ActiveTheme} is set with the {@link XttTheme} object.
      *
      * @param {String|XttTheme} - One of the following:
-     * - The name of a {@link XttTheme} object as string.
+     * - The name of an {@link XttTheme} object as string.
      * - An {@link XttTheme} object.
      *
      * If the {@link XttTheme} object does not already exist in the collection
@@ -2208,7 +2214,7 @@ class XttThemeGroup extends Xtooltip.Base {
      *
      * @param {String|XttTheme} Theme - One of the following:
      *
-     * - The name of a {@link XttTheme} object as string.
+     * - The name of an {@link XttTheme} object as string.
      * - An {@link XttTheme} object.
      */
     ThemeDelete(Theme) {
@@ -2217,7 +2223,7 @@ class XttThemeGroup extends Xtooltip.Base {
     /**
      * @desc - Returns the {@link XttTheme} object.
      *
-     * @param {String} ThemeName - The name of a {@link XttTheme} object as string.
+     * @param {String} ThemeName - The name of an {@link XttTheme} object as string.
      */
     ThemeGet(ThemeName) {
         return this.Themes.Get(ThemeName)
@@ -2404,7 +2410,19 @@ class XttPool extends Array {
         if !this.HasOwnProp('id') {
             throw Error('Failed to produce a unique id.')
         }
+        /**
+         * @desc - The {@link XttThemeGroup} associated with this {@link XttPool} object.
+         * @memberof XttPool
+         * @instance
+         * @type {XttThemeGroup}
+         */
         this.ThemeGroup := ThemeGroup
+        /**
+         * @desc - The key used to identify the tracking tooltip.
+         * @memberof XttPool
+         * @instance
+         * @type {String}
+         */
         this.Key := Key
         this.Capacity := Max(ThemeGroup.Xtooltips.Count, 16)
         proto := this.__prototype := { idXttPool: this.id, key: Key }
@@ -2419,7 +2437,11 @@ class XttPool extends Array {
         }
     }
     /**
-     * @desc - Displays a tooltip at the specified location.
+     * @desc - Displays a tooltip at the specified location. The theme group's active theme
+     * ({@link XttPool#ThemeGroup.ActiveTheme}) is applied to the {@link Xtooltip} before the tooltip
+     * is displayed.
+     *
+     * To specify a theme, use {@link XttPool.Prototype.ShowEx}.
      *
      * @param {String} Text - The text to display in the tooltip.
      *
@@ -2470,22 +2492,115 @@ class XttPool extends Array {
     Call(Text, X, Y, Duration := 0, Priority := 0) {
         if this.Length {
             item := this.Pop()
-            item.xtt.UpdateTipText(Text, this.Key)
+            xtt := item.xtt
+            xtt.UpdateTipText(Text, this.Key)
+            this.ThemeGroup.__ActiveTheme.Apply(xtt)
         } else {
-            item := { xtt: Xtooltip({ ThemeGroup: this.ThemeGroup }) }
+            xtt := Xtooltip({ ThemeGroup: this.ThemeGroup })
+            item := { xtt: xtt }
             item.base := this.__prototype
-            item.xtt.AddTracking(this.Key, Text)
+            xtt.AddTracking(this.Key, Text)
         }
-        ti := item.xtt.Tools.Get(this.Key).Call()
-        SendMessage(TTM_TRACKACTIVATE, 1, ti.Ptr, item.xtt.Hwnd)
-        SendMessage(TTM_TRACKPOSITION, 0, (Y << 16) | (X & 0xFFFF), item.xtt.Hwnd)
+        ti := xtt.Tools.Get(this.Key).Call()
+        SendMessage(TTM_TRACKACTIVATE, 1, ti.Ptr, xtt.Hwnd)
+        SendMessage(TTM_TRACKPOSITION, 0, (Y << 16) | (X & 0xFFFF), xtt.Hwnd)
         if Duration {
             SetTimer(item, -Abs(Duration), Priority)
         }
         return item
     }
     /**
-     * @desc - Displays a tooltip next to the mouse pointer.
+     * @desc - Displays a tooltip at the specified location. This is similar to
+     * {@link XttPool.Prototype.Call}, except this includes a parameter `Theme` which allows your
+     * code to specify an {@link XttTheme} to use with the tooltip. The theme will only be applied
+     * to the tooltip shown by this method call; all other tooltips will maintain their current theme.
+     *
+     * To use the theme group's active theme ({@link XttPool#ThemeGroup.ActiveTheme}), call
+     * {@link XttPool.Prototype.Call}.
+     *
+     * @param {String} Text - The text to display in the tooltip.
+     *
+     * @param {String|XttTheme} Theme - The theme to apply to the tooltip window. One of the following:
+     *
+     * - The name of an {@link XttTheme} object as string. If `Theme` is a string, the theme must
+     *   exist in the collection {@link XttPool#ThemeGroup.Themes}.
+     * - An {@link XttTheme} object.
+     *
+     * @param {Integer} X - The x-coordinate.
+     *
+     * @param {Integer} Y - The y-coordinate.
+     *
+     * @param {Integer} [Duration = 0] - If zero, the tooltip window is displayed indefinitely
+     * To close the window, you must cache the reference to the {@link XttPool.Item} object returned
+     * by thie method, then when finished with the tooltip window, just call the object.
+     *
+     * If nonzero, the tooltip window will be hidden after `Duration` milliseconds passes.
+     *
+     * @example
+     * #include <Xtooltip>
+     *
+     * ; Create a theme
+     * theme := XttTheme("MyTheme", {
+     *       BackColor: XttRgb(255, 255, 255)
+     *     , FaceName: 'Segoe Ui'
+     *     , FontSize: 12
+     *     , Quality: 5
+     *     , Margin: XttRect.Margin(3)
+     *     , MaxWidth: 400
+     *     , TextColor: XttRgb(255, 0, 235)
+     *     , Weight: 400})
+     *
+     * ; Create a theme group and activate the theme
+     * themeGroup := XttThemeGroup("MyGroup", theme)
+     * themeGroup.ThemeActivate("MyTheme")
+     *
+     * ; Create the `XttPool` object. The constructor requires an `XttThemeGroup` object
+     * pool := XttPool(themeGroup)
+     *
+     * ttItem := pool("Hello, world!", 100, 100)
+     *
+     * ; When finished
+     * ttItem() ; this closes the window.
+     * @
+     *
+     * @param {Integer} [Priority = 0] - The value to pass to the `Priority` parameter of
+     * {@link https://www.autohotkey.com/docs/v2/lib/SetTimer.htm SetTimer}.
+     *
+     * If `Duration` is `0`, `Priority` is ignored.
+     *
+     * @returns {XttPool.Item}
+     */
+    ShowEx(Text, Theme, X, Y, Duration := 0, Priority := 0) {
+        if this.Length {
+            item := this.Pop()
+            xtt := item.xtt
+            xtt.UpdateTipText(Text, this.Key)
+        } else {
+            xtt := Xtooltip()
+            item := { xtt: xtt }
+            item.base := this.__prototype
+            xtt.AddTracking(this.Key, Text)
+            this.ThemeGroup.Xtooltips.Set(xtt.Hwnd, xtt)
+        }
+        if IsObject(Theme) {
+            Theme.Apply(xtt)
+        } else {
+            this.ThemeGroup.Themes.Get(Theme).Apply(xtt)
+        }
+        ti := xtt.Tools.Get(this.Key).Call()
+        SendMessage(TTM_TRACKACTIVATE, 1, ti.Ptr, xtt.Hwnd)
+        SendMessage(TTM_TRACKPOSITION, 0, (Y << 16) | (X & 0xFFFF), xtt.Hwnd)
+        if Duration {
+            SetTimer(item, -Abs(Duration), Priority)
+        }
+        return item
+    }
+    /**
+     * @desc - Displays a tooltip next to the mouse pointer. The theme group's active theme
+     * ({@link XttPool#ThemeGroup.ActiveTheme}) is applied to the {@link Xtooltip} before the tooltip
+     * is displayed.
+     *
+     * To specify a theme, use {@link XttPool.Prototype.ShowByMouseEx}.
      *
      * @param {String} Text - The text to display in the tooltip.
      *
@@ -2554,26 +2669,140 @@ class XttPool extends Array {
     ShowByMouse(Text, Duration := 0, Dimension := 'X', Prefer := '', Padding := 0, Priority := 0, &OutResult?) {
         if this.Length {
             item := this.Pop()
-            item.xtt.UpdateTipText(Text, this.Key)
+            xtt := item.xtt
+            xtt.UpdateTipText(Text, this.Key)
+            this.ThemeGroup.__ActiveTheme.Apply(xtt)
         } else {
-            item := { xtt: Xtooltip({ ThemeGroup: this.ThemeGroup }) }
+            xtt := Xtooltip({ ThemeGroup: this.ThemeGroup })
+            item := { xtt: xtt }
             item.base := this.__prototype
-            item.xtt.AddTracking(this.Key, Text)
+            xtt.AddTracking(this.Key, Text)
         }
-        ti := item.xtt.Tools.Get(this.Key).Call()
-        SendMessage(TTM_TRACKACTIVATE, 1, ti.Ptr, item.xtt.Hwnd)
-        rc := XttRect.Window(item.xtt.Hwnd)
+        ti := xtt.Tools.Get(this.Key).Call()
+        SendMessage(TTM_TRACKACTIVATE, 1, ti.Ptr, xtt.Hwnd)
+        rc := XttRect.Window(xtt.Hwnd)
         OutResult := XttRectMoveAdjacent(rc, , , Dimension, Prefer, Padding, 2)
-        SendMessage(TTM_TRACKPOSITION, 0, (rc.T << 16) | (rc.L & 0xFFFF), item.xtt.Hwnd)
+        SendMessage(TTM_TRACKPOSITION, 0, (rc.T << 16) | (rc.L & 0xFFFF), xtt.Hwnd)
         if Duration {
             SetTimer(item, -Abs(Duration), Priority)
         }
         return item
     }
     /**
-     * @description - Calculates the optimal position to move the tooltip window adjacent to another
+     * @desc - Displays a tooltip next to the mouse pointer. This is similar to
+     * {@link XttPool.Prototype.ShowByMouse}, except this includes a parameter `Theme` which allows
+     * your code to specify an {@link XttTheme} to use with the tooltip. The theme will only be
+     * applied to the tooltip shown by this method call; all other tooltips will maintain their
+     * current theme.
+     *
+     * To use the theme group's active theme ({@link XttPool#ThemeGroup.ActiveTheme}), call
+     * {@link XttPool.Prototype.ShowByMouse}.
+     *
+     * @param {String} Text - The text to display in the tooltip.
+     *
+     * @param {String|XttTheme} Theme - The theme to apply to the tooltip window. One of the following:
+     *
+     * - The name of an {@link XttTheme} object as string. If `Theme` is a string, the theme must
+     *   exist in the collection {@link XttPool#ThemeGroup.Themes}.
+     * - An {@link XttTheme} object.
+     *
+     * @param {Integer} [Duration = 0] - If zero, the tooltip window is displayed indefinitely
+     * To close the window, you must cache the reference to the {@link XttPool.Item} object returned
+     * by thie method, then when finished with the tooltip window, just call the object.
+     *
+     * If nonzero, the tooltip window will be hidden after `Duration` milliseconds passes.
+     *
+     * @example
+     * #include <Xtooltip>
+     *
+     * ; Create a theme
+     * theme := XttTheme("MyTheme", {
+     *       BackColor: XttRgb(255, 255, 255)
+     *     , FaceName: 'Segoe Ui'
+     *     , FontSize: 12
+     *     , Quality: 5
+     *     , Margin: XttRect.Margin(3)
+     *     , MaxWidth: 400
+     *     , TextColor: XttRgb(255, 0, 235)
+     *     , Weight: 400})
+     *
+     * ; Create a theme group and activate the theme
+     * themeGroup := XttThemeGroup("MyGroup", theme)
+     * themeGroup.ThemeActivate("MyTheme")
+     *
+     * ; Create the `XttPool` object. The constructor requires an `XttThemeGroup` object
+     * pool := XttPool(themeGroup)
+     *
+     * ttItem := pool("Hello, world!", 100, 100)
+     *
+     * ; When finished
+     * ttItem() ; this closes the window.
+     * @
+     *
+     * @param {String} [Dimension = "X"] - Either "X" or "Y", specifying if the tooltip window is to
+     * be moved adjacent to the cursor on either the X or Y axis. If "X", the tooltip window is moved
+     * to the left or right of the cursor, and the window's vertical center is aligned with the
+     * cursor's vertical center. If "Y", the tooltip window is moved to the top or bottom of the
+     * cursor, and the tooltip window's horizontal center is aligned with the cursor's horizontal center.
+     *
+     * @param {String} [Prefer = ""] - A character indicating a preferred side. If `Prefer` is an
+     * empty string, the function will move the tooltip window to the side the has the greatest amount of
+     * space between the monitor's border and the cursor. If `Prefer` is any of the following values,
+     * the tooltip window will be moved to that side unless doing so would cause the the tooltip window
+     * to extend outside of the monitor's work area.
+     * - "L" - Prefers the left side.
+     * - "T" - Prefers the top side.
+     * - "R" - Prefers the right side.
+     * - "B" - Prefes the bottom.
+     *
+     * @param {Number} [Padding = 0] - The amount of padding to leave between the tooltip window
+     * and the cursor.
+     *
+     * @param {Integer} [Priority = 0] - The value to pass to the `Priority` parameter of
+     * {@link https://www.autohotkey.com/docs/v2/lib/SetTimer.htm SetTimer}.
+     *
+     * If `Duration` is `0`, `Priority` is ignored.
+     *
+     * @param {VarRef} [OutResult] - A variable that receives the value returned by
+     * {@link XttRectMoveAdjacent}.
+     *
+     * @returns {XttPool.Item}
+     */
+    ShowByMouseEx(Text, Theme, Duration := 0, Dimension := 'X', Prefer := '', Padding := 0, Priority := 0, &OutResult?) {
+        if this.Length {
+            item := this.Pop()
+            xtt := item.xtt
+            xtt.UpdateTipText(Text, this.Key)
+        } else {
+            xtt := Xtooltip()
+            item := { xtt: xtt }
+            item.base := this.__prototype
+            xtt.AddTracking(this.Key, Text)
+            this.ThemeGroup.Xtooltips.Set(xtt.Hwnd, xtt)
+        }
+        if IsObject(Theme) {
+            Theme.Apply(xtt)
+        } else {
+            this.ThemeGroup.Themes.Get(Theme).Apply(xtt)
+        }
+        ti := xtt.Tools.Get(this.Key).Call()
+        SendMessage(TTM_TRACKACTIVATE, 1, ti.Ptr, xtt.Hwnd)
+        rc := XttRect.Window(xtt.Hwnd)
+        OutResult := XttRectMoveAdjacent(rc, , , Dimension, Prefer, Padding, 2)
+        SendMessage(TTM_TRACKPOSITION, 0, (rc.T << 16) | (rc.L & 0xFFFF), xtt.Hwnd)
+        if Duration {
+            SetTimer(item, -Abs(Duration), Priority)
+        }
+        return item
+    }
+    /**
+     * @desc - Calculates the optimal position to move the tooltip window adjacent to another
      * window / rectangle while ensuring that the tooltip window stays within the monitor's work area.
-     * If successful, moves the tracking tooltip window to the new position.
+     * If successful, moves the tracking tooltip window to the new position. The theme group's active
+     * theme ({@link XttPool#ThemeGroup.ActiveTheme}) is applied to the {@link Xtooltip} before the
+     * tooltip is displayed.
+     *
+     * To specify a theme, use {@link XttPool.Prototype.ShowByRectEx}.
      *
      * @param {String} Text - The text to display in the tooltip.
      *
@@ -2665,11 +2894,150 @@ class XttPool extends Array {
     ShowByRect(Text, Target, Duration?, ContainerRect?, Dimension := 'X', Prefer := '', Padding := 0, InsufficientSpaceAction := 0, Priority := 0, &OutResult?) {
         if this.Length {
             item := this.Pop()
-            item.xtt.UpdateTipText(Text, this.Key)
+            xtt := item.xtt
+            xtt.UpdateTipText(Text, this.Key)
+            this.ThemeGroup.__ActiveTheme.Apply(xtt)
         } else {
-            item := { xtt: Xtooltip({ ThemeGroup: this.ThemeGroup }) }
+            xtt := Xtooltip({ ThemeGroup: this.ThemeGroup })
+            item := { xtt: xtt }
             item.base := this.__prototype
-            item.xtt.AddTracking(this.Key, Text)
+            xtt.AddTracking(this.Key, Text)
+        }
+        if !IsObject(Target) {
+            Target := XttRect.Window(Target)
+        }
+        ti := xtt.Tools.Get(this.Key).Call()
+        SendMessage(TTM_TRACKACTIVATE, 1, ti.Ptr, xtt.Hwnd)
+        rc := XttRect.Window(xtt.Hwnd)
+        if !(OutResult := XttRectMoveAdjacent(rc, Target, ContainerRect?, Dimension, Prefer, Padding, InsufficientSpaceAction)) || InsufficientSpaceAction {
+            SendMessage(TTM_TRACKPOSITION, 0, (rc.T << 16) | (rc.L & 0xFFFF), xtt.Hwnd)
+            if IsSet(Duration) {
+                SetTimer(item, -Abs(Duration), Priority)
+            }
+        }
+        return item
+    }
+    /**
+     * @desc - Calculates the optimal position to move the tooltip window adjacent to another
+     * window / rectangle while ensuring that the tooltip window stays within the monitor's work area.
+     * If successful, moves the tracking tooltip window to the new position. This is similar to
+     * {@link XttPool.Prototype.ShowByRect}, except this includes a parameter `Theme` which allows
+     * your code to specify an {@link XttTheme} to use with the tooltip. The theme will only be
+     * applied to the tooltip shown by this method call; all other tooltips will maintain their
+     * current theme.
+     *
+     * To use the theme group's active theme ({@link XttPool#ThemeGroup.ActiveTheme}), call
+     * {@link XttPool.Prototype.ShowByRect}.
+     *
+     * @param {String} Text - The text to display in the tooltip.
+     *
+     * @param {String|XttTheme} Theme - The theme to apply to the tooltip window. One of the following:
+     *
+     * - The name of an {@link XttTheme} object as string. If `Theme` is a string, the theme must
+     *   exist in the collection {@link XttPool#ThemeGroup.Themes}.
+     * - An {@link XttTheme} object.
+     *
+     * @param {Integer|XttRect} [Target] - One of the following:
+     *
+     * - If an integer, it is a window's handle (hwnd). The tooltip window will be moved adjacent to
+     *   that window.
+     * - If an {@link XttRect} object, the tooltip window will be moved adjacent to the rectangle.
+     *
+     * @param {Integer} [Duration = 0] - If zero, the tooltip window is displayed indefinitely
+     * To close the window, you must cache the reference to the {@link XttPool.Item} object returned
+     * by thie method, then when finished with the tooltip window, just call the object.
+     *
+     * If nonzero, the tooltip window will be hidden after `Duration` milliseconds passes.
+     *
+     * @example
+     * #include <Xtooltip>
+     *
+     * ; Create a theme
+     * theme := XttTheme("MyTheme", {
+     *       BackColor: XttRgb(255, 255, 255)
+     *     , FaceName: 'Segoe Ui'
+     *     , FontSize: 12
+     *     , Quality: 5
+     *     , Margin: XttRect.Margin(3)
+     *     , MaxWidth: 400
+     *     , TextColor: XttRgb(255, 0, 235)
+     *     , Weight: 400})
+     *
+     * ; Create a theme group and activate the theme
+     * themeGroup := XttThemeGroup("MyGroup", theme)
+     * themeGroup.ThemeActivate("MyTheme")
+     *
+     * ; Create the `XttPool` object. The constructor requires an `XttThemeGroup` object
+     * pool := XttPool(themeGroup)
+     *
+     * ttItem := pool("Hello, world!", 100, 100)
+     *
+     * ; When finished
+     * ttItem() ; this closes the window.
+     * @
+     *
+     * @param {*} [ContainerRect] - If set, `ContainerRect` defines the boundaries which restrict
+     * the area that the tooltip window is permitted to be moved within. The object must have poperties
+     * { L, T, R, B } to be valid. If unset, the work area of the monitor with the greatest area of
+     * intersection with `Target` is used.
+     *
+     * @param {String} [Dimension = "X"] - Either "X" or "Y", specifying if the tooltip window is to
+     * be moved adjacent to `Target` on either the X or Y axis. If "X", the tooltip window is moved
+     * to the left or right of `Target`, and the tooltip window's vertical center is aligned with
+     * `Target`'s vertical center. If "Y", the tooltip window is moved to the top or bottom of
+     * `Target`, and the tooltip window's horizontal center is aligned with `Target`'s horizontal center.
+     *
+     * @param {String} [Prefer = ""] - A character indicating a preferred side. If `Prefer` is an
+     * empty string, the function will move the rectangle to the side the has the greatest amount of
+     * space between the monitor's border and `Target`. If `Prefer` is any of the following values,
+     * the rectangle will be moved to that side unless doing so would cause the the rectangle to extend
+     * outside of the monitor's work area.
+     * - "L" - Prefers the left side.
+     * - "T" - Prefers the top side.
+     * - "R" - Prefers the right side.
+     * - "B" - Prefes the bottom.
+     *
+     * @param {Number} [Padding = 0] - The amount of padding to leave between the tooltip window and `Target`.
+     *
+     * @param {Integer} [InsufficientSpaceAction = 2] - Determines the action taken if there is
+     * insufficient space to move the rectangle adjacent to `Target` while also keeping the rectangle
+     * entirely within the monitor's work area. The function will always sacrifice some of the padding
+     * if it will allow the rectangle to stay within the monitor's work area. If the space is still
+     * insufficient, the action can be one of the following:
+     * - 0 : The function will not move the rectangle.
+     * - 1 : The function will move the rectangle, allowing the rectangle's area to extend into a
+     *   non-visible region of the monitor.
+     * - 2 : The function will move the rectangle, keeping the rectangle's area within the monitor's work
+     *   area by allowing the rectangle to overlap with `Target`.
+     *
+     * @returns {Integer} - If the insufficient space action was invoked, returns 1. Else, returns 0.
+     *
+     * @param {Integer} [Priority = 0] - The value to pass to the `Priority` parameter of
+     * {@link https://www.autohotkey.com/docs/v2/lib/SetTimer.htm SetTimer}.
+     *
+     * If `Duration` is `0`, `Priority` is ignored.
+     *
+     * @param {VarRef} [OutResult] - A variable that receives the value returned by
+     * {@link XttRectMoveAdjacent}.
+     *
+     * @returns {XttPool.Item}
+     */
+    ShowByRectEx(Text, Theme, Target, Duration?, ContainerRect?, Dimension := 'X', Prefer := '', Padding := 0, InsufficientSpaceAction := 0, Priority := 0, &OutResult?) {
+        if this.Length {
+            item := this.Pop()
+            xtt := item.xtt
+            xtt.UpdateTipText(Text, this.Key)
+        } else {
+            xtt := Xtooltip()
+            item := { xtt: xtt }
+            item.base := this.__prototype
+            xtt.AddTracking(this.Key, Text)
+            this.ThemeGroup.Xtooltips.Set(xtt.Hwnd, xtt)
+        }
+        if IsObject(Theme) {
+            Theme.Apply(xtt)
+        } else {
+            this.ThemeGroup.Themes.Get(Theme).Apply(xtt)
         }
         if !IsObject(Target) {
             Target := XttRect.Window(Target)
@@ -2684,6 +3052,45 @@ class XttPool extends Array {
             }
         }
         return item
+    }
+    /**
+     * @desc - Activates a theme. When a theme is activated, it is applied to every
+     * {@link Xtooltip} object in the collection {@link XttPool#ThemeGroup.Xtooltips}. Also, the
+     * value of property {@link XttPool#ThemeGroup.ActiveTheme} is set with the {@link XttTheme}
+     * object.
+     *
+     * @param {String|XttTheme} - One of the following:
+     * - The name of an {@link XttTheme} object as string.
+     * - An {@link XttTheme} object.
+     *
+     * If the {@link XttTheme} object does not already exist in the collection
+     * {@link XttPool#ThemeGroup.Themes}, it gets added to the collection.
+     *
+     * @throws {Error} - "A theme must be set with a name to be added to a theme group."
+     * @throws {Error} - "Unable to find a theme with the input name."
+     */
+    ThemeActivate(Theme) {
+        this.ThemeGroup.ThemeActivate(Theme)
+    }
+    /**
+     * @desc - Adds a theme to the collection {@link XttPool#ThemeGroup.Themes}.
+     *
+     * @param {Object|String|XttTheme} Theme - One of the following:
+     *
+     * - The name of an {@link XttTheme} object as string. This is only valid if your code has
+     *   called {@link Xtooltip.RegisterThemeCollection} or {@link Xtooltip.RegisterAllCollections}.
+     * - An object with {@link XttTheme} options as property : value pairs. If `Theme` is an object,
+     *   it gets passed to {@link XttTheme.Prototype.__New} to create a new {@link XttTheme} object.
+     * - An {@link XttTheme} object.
+     *
+     * @param {Boolean} [Activate = true] - If true, applies the theme to every {@link Xtooltip}
+     * in the collection {@link XttPool#ThemeGroup.Xtooltips}, and sets property
+     * {@link XttPool#ThemeGroup.ActiveTheme} with the {@link XttTheme} object.
+     *
+     * @throws {Error} - "A theme must be set with a name to be added to a theme group."
+     */
+    ThemeAdd(Theme, Activate := true) {
+        this.ThemeGroup.ThemeAdd(Theme, Activate)
     }
     __Delete() {
         ObjPtrAddRef(this)
@@ -2808,6 +3215,28 @@ class XttPool extends Array {
          */
         SetText(Text) {
             this.xtt.UpdateTipText(Text, this.key)
+        }
+        /**
+         * @desc - Sets the tooltip's theme.
+         *
+         * @param {String|XttTheme} Theme - The theme to apply to the tooltip window. One of the following:
+         *
+         * - The name of an {@link XttTheme} object as string. If `Theme` is a string, the theme must
+         *   exist in the collection {@link XttPool#ThemeGroup.Themes}.
+         * - An {@link XttTheme} object.
+         */
+        SetTheme(Theme) {
+            if IsObject(Theme) {
+                Theme.Apply(this.xtt)
+            } else if pool := XttPool.collection.Get(this.idXttPool) {
+                pool.ThemeGroup.Themes.Get(Theme).Apply(this.xtt)
+            } else {
+                ; If you get this error, it likely means your code allowed the reference to the
+                ; `XttPool` object to go out of scope, so it was deleted from the collection.
+                ; Ensure that the `XttPool` object stays alive for as long as you intend to use the
+                ; `XttPool.Item` objects.
+                throw Error('The ``XttPool`` object is missing from the collecton.')
+            }
         }
     }
 }
@@ -3149,12 +3578,12 @@ class XttRect {
     }
     static Window(Hwnd) {
         rc := this()
-        DllCall('GetWindowRect', 'ptr', Hwnd, 'ptr', rc, 'int')
+        DllCall(g_user32_GetWindowRect, 'ptr', Hwnd, 'ptr', rc, 'int')
         return rc
     }
     static Client(Hwnd) {
         rc := this()
-        DllCall('GetClientRect', 'ptr', Hwnd, 'ptr', rc, 'int')
+        DllCall(g_user32_GetClientRect, 'ptr', Hwnd, 'ptr', rc, 'int')
         return rc
     }
     static Dwma(Hwnd) {
@@ -3447,10 +3876,10 @@ class XttLogfont {
     Apply() {
         hFontOld := SendMessage(WM_GETFONT,,, this.Hwnd)
         Flag := this.Handle = hFontOld
-        this.Handle := DllCall('CreateFontIndirectW', 'ptr', this, 'ptr')
+        this.Handle := DllCall(g_gdi32_CreateFontIndirectW, 'ptr', this, 'ptr')
         SendMessage(WM_SETFONT, this.Handle, false, this.Hwnd)
         if Flag {
-            DllCall('DeleteObject', 'ptr', hFontOld, 'int')
+            DllCall(g_gdi32_DeleteObject, 'ptr', hFontOld, 'int')
         }
     }
     /**
@@ -3460,7 +3889,7 @@ class XttLogfont {
      */
     Call(*) {
         hFont := SendMessage(WM_GETFONT,,, this.Hwnd)
-        if !DllCall('Gdi32.dll\GetObject', 'ptr', hFont, 'int', this.Size, 'ptr', this, 'uint') {
+        if !DllCall(g_gdi32_GetObjectW, 'ptr', hFont, 'int', this.Size, 'ptr', this, 'uint') {
             throw OSError('Failed to get font object.')
         }
     }
@@ -3525,7 +3954,7 @@ class XttLogfont {
      */
     DisposeFont() {
         if this.Handle {
-            DllCall('DeleteObject', 'ptr', this.Handle)
+            DllCall(g_gdi32_DeleteObject, 'ptr', this.Handle)
             this.Handle := 0
         }
     }
@@ -3561,7 +3990,7 @@ class XttLogfont {
      * @memberof XttLogfont
      * @instance
      */
-    Dpi => this.Hwnd ? DllCall('GetDpiForWindow', 'Ptr', this.Hwnd, 'UInt') : A_ScreenDpi
+    Dpi => this.Hwnd ? DllCall(g_user32_GetDpiForWindow, 'Ptr', this.Hwnd, 'UInt') : A_ScreenDpi
     /**
      * Gets or sets the escapement measured in tenths of a degree.
      * @memberof XttLogfont
@@ -3866,6 +4295,30 @@ Xtooltip_SetConstants(force := false) {
     WM_SETFONT := 0x0030
     WM_USER := 1024
 
+    local hmod := DllCall('GetModuleHandle', 'str', 'User32', 'ptr')
+    g_user32_DestroyWindow := DllCall('GetProcAddress', 'ptr', hmod, 'astr', 'DestroyWindow', 'ptr')
+    g_user32_GetAncestor := DllCall('GetProcAddress', 'ptr', hmod, 'astr', 'GetAncestor', 'ptr')
+    g_user32_GetClientRect := DllCall('GetProcAddress', 'ptr', hmod, 'astr', 'GetClientRect', 'ptr')
+    g_user32_GetCursorPos := DllCall('GetProcAddress', 'ptr', hmod, 'astr', 'GetCursorPos', 'ptr')
+    g_user32_GetDpiForWindow := DllCall('GetProcAddress', 'ptr', hmod, 'astr', 'GetDpiForWindow', 'ptr')
+    g_user32_GetMonitorInfoW := DllCall('GetProcAddress', 'ptr', hmod, 'astr', 'GetMonitorInfoW', 'ptr')
+    g_user32_GetWindowRect := DllCall('GetProcAddress', 'ptr', hmod, 'astr', 'GetWindowRect', 'ptr')
+    g_user32_IsWindowVisible := DllCall('GetProcAddress', 'ptr', hmod, 'astr', 'IsWindowVisible', 'ptr')
+    g_user32_MonitorFromRect := DllCall('GetProcAddress', 'ptr', hmod, 'astr', 'MonitorFromRect', 'ptr')
+    g_user32_ScreenToClient := DllCall('GetProcAddress', 'ptr', hmod, 'astr', 'ScreenToClient', 'ptr')
+    g_user32_SetThreadDpiAwarenessContext := DllCall('GetProcAddress', 'ptr', hmod, 'astr', 'SetThreadDpiAwarenessContext', 'ptr')
+
+    hmod := DllCall('GetModuleHandle', 'str', 'Gdi32', 'ptr')
+    g_gdi32_CreateFontIndirectW := DllCall('GetProcAddress', 'ptr', hmod, 'astr', 'CreateFontIndirectW', 'ptr')
+    g_gdi32_DeleteObject := DllCall('GetProcAddress', 'ptr', hmod, 'astr', 'DeleteObject', 'ptr')
+    g_gdi32_GetObjectW := DllCall('GetProcAddress', 'ptr', hmod, 'astr', 'GetObjectW', 'ptr')
+
+    hmod := DllCall('LoadLibrary', 'str', 'dwmapi', 'ptr')
+    g_dwmapi_DwmSetWindowAttribute := DllCall('GetProcAddress', 'ptr', hmod, 'astr', 'DwmSetWindowAttribute', 'ptr')
+
+    hmod := DllCall('LoadLibrary', 'str', 'UxTheme', 'ptr')
+    g_uxtheme_SetWindowTheme := DllCall('GetProcAddress', 'ptr', hmod, 'astr', 'SetWindowTheme', 'ptr')
+
     g_Xtooltip_constants_set := 1
 }
 
@@ -3879,9 +4332,9 @@ XttSetThreadDpiAwareness__Call(Obj, Name, Params) {
     Split := StrSplit(Name, '_')
     if Split.Length == 2 && Obj.HasMethod(Split[1]) && SubStr(Split[2], 1, 1) = 'S' {
         if StrLen(Split[2]) == 2 {
-            DllCall('SetThreadDpiAwarenessContext', 'ptr', -SubStr(Split[2], 2, 1), 'ptr')
+            DllCall(g_user32_SetThreadDpiAwarenessContext, 'ptr', -SubStr(Split[2], 2, 1), 'ptr')
         } else {
-            DllCall('SetThreadDpiAwarenessContext', 'ptr', HasProp(Obj, 'DpiAwarenessContext') ? Obj.DpiAwarenessContext : DPI_AWARENESS_CONTEXT_DEFAULT ?? -4, 'ptr')
+            DllCall(g_user32_SetThreadDpiAwarenessContext, 'ptr', HasProp(Obj, 'DpiAwarenessContext') ? Obj.DpiAwarenessContext : DPI_AWARENESS_CONTEXT_DEFAULT ?? -4, 'ptr')
         }
         if Params.Length {
             return Obj.%Split[1]%(Params*)
@@ -3969,10 +4422,10 @@ XttRectMoveAdjacent(Subject, Target?, ContainerRect?, Dimension := 'X', Prefer :
     } else {
         buf := Buffer(16)
         NumPut('int', tarL, 'int', tarT, 'int', tarR, 'int', tarB, buf)
-        Hmon := DllCall('MonitorFromRect', 'ptr', buf, 'uint', 0x00000002, 'ptr')
+        Hmon := DllCall(g_user32_MonitorFromRect, 'ptr', buf, 'uint', 0x00000002, 'ptr')
         mon := Buffer(40)
         NumPut('int', 40, mon)
-        if !DllCall('GetMonitorInfo', 'ptr', Hmon, 'ptr', mon, 'int') {
+        if !DllCall(g_user32_GetMonitorInfoW, 'ptr', Hmon, 'ptr', mon, 'int') {
             throw OSError()
         }
         monL := NumGet(mon, 20, 'int')

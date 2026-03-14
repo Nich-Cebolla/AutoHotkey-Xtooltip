@@ -2,17 +2,12 @@
 #SingleInstance force
 #include ..\src\Xtooltip.ahk
 
-/**
-    This demonstrates the use of {@link XttPool}. {@link XttPool} is intended to be a convenient
-    tool for displaying a tooltip at a specific location.
-*/
+test_XttPool_110()
 
-test()
-
-class test {
+class test_XttPool_110 {
     static Call() {
         this.count := 0
-        this.theme := XttTheme('light-blue', {
+        this.theme1 := XttTheme('light-blue', {
             BackColor: XttRgb(255, 255, 255)
           , FaceName: 'Segoe Ui'
           , FontSize: 12
@@ -22,7 +17,17 @@ class test {
           , TextColor: XttRgb(0, 200, 200)
           , Weight: 700
         })
-        this.group := XttThemeGroup('pool', this.theme)
+        this.theme2 := XttTheme('hot-pink', {
+            BackColor: XttRgb(255, 255, 255)
+          , FaceName: 'Segoe Ui'
+          , FontSize: 12
+          , Quality: 5
+          , Margin: XttRect.Margin(3)
+          , MaxWidth: 400
+          , TextColor: XttRgb(255, 0, 235)
+          , Weight: 400
+        })
+        this.group := XttThemeGroup('pool', [ this.theme1, this.theme2 ])
         this.group.ThemeActivate('light-blue')
         global pool := XttPool(this.group)
 
@@ -33,7 +38,7 @@ class test {
 =
         controls := this.controls := MakeInputControlGroup(
             g,
-            [ 'Text', 'Target', 'Duration', 'Dimension', 'Prefer', 'Padding', 'InsufficientSpaceAction' ],
+            [ 'Text', 'Theme', 'Target', 'Duration', 'Dimension', 'Prefer', 'Padding', 'InsufficientSpaceAction' ],
             { getButton: false, setButton: false, startX: x + w + g.MarginX - 80, startY: y })
         this.available := g.Add('Text', 'x' x ' y' (y + h + g.MarginY) ' Section', 'Available: 0')
         this.available.GetPos(, , &w)
@@ -42,6 +47,7 @@ class test {
         (this.btnShowByRect := g.Add('Button', 'xs', 'Show by rect')).OnEvent('Click', 'HClickButtonShowByRect')
         (this.btnRecallSelected := g.Add('Button', 'xs', 'Recall selected')).OnEvent('Click', 'HClickButtonRecallSelected')
         controls.Get('Text').Edit.Text := 'Hello, world!'
+        controls.Get('Theme').Edit.Text := 'light-blue'
         controls.Get('Duration').Edit.Text := 0
         controls.Get('Prefer').Edit.Text := 'T'
         controls.Get('Dimension').Edit.Text := 'Y'
@@ -53,19 +59,20 @@ class test {
         this.map := Map()
 
 
-        this.theme2 := XttTheme('info', {
+        this.theme3 := XttTheme('info', {
             BackColor: XttRgb(255, 255, 255)
           , FaceName: 'Segoe Ui'
           , FontSize: 12
           , Quality: 5
           , Margin: XttRect.Margin(3)
           , MaxWidth: 400
-          , TextColor: XttRgb(255, 0, 235)
+          , TextColor: XttRgb(100, 50, 200)
           , Weight: 400
         })
-        infotip := this.infotip := Xtooltip({ theme: this.theme2, AddStyle: TTS_ALWAYSTIP })
+        infotip := this.infotip := Xtooltip({ theme: this.theme3, AddStyle: TTS_ALWAYSTIP })
         infotip.SetDelayTime(10000, 2)
         infotip.AddControl('Text', 'Input the text to display on the demo tooltip.', controls.Get('Text').Edit)
+        infotip.AddControl('Theme', 'Input either "light-blue" or "hot-pink" to specify the theme.', controls.Get('Theme').Edit)
         infotip.AddControl('Target', 'Input a window handle (hwnd) or title to use the "Show by rect" button.', controls.Get('Target').Edit)
         infotip.AddControl('Duration', 'Input the duration to display the tooltip (milliseconds). A value of "0" causes the tooltip to display indefinitely until you click "Recall selected". You can spawn multiple, concurrent windows by leaving this "0", or try out the timer by inputting a number.', controls.Get('Duration').Edit)
         infotip.AddControl('Dimension', 'Input "X" or "Y" (see parameter "Dimension" of ``XttPool.Prototype.ShowByMouse`` / ``XttPool.Prototype.ShowByRect``).', controls.Get('Dimension').Edit)
@@ -82,8 +89,9 @@ class test {
         controls := this.controls
         duration := controls.Get('Duration').Edit.Text
         text := controls.Get('Text').Edit.Text
-        item := pool.ShowByMouse(
+        item := pool.ShowByMouseEx(
             text,
+            StrLen(controls.Get('Theme').Edit.Text) ? controls.Get('Theme').Edit.Text : unset,
             duration || 0,
             StrLen(controls.Get('Dimension').Edit.Text) ? controls.Get('Dimension').Edit.Text : unset,
             StrLen(controls.Get('Prefer').Edit.Text) ? controls.Get('Prefer').Edit.Text : unset,
@@ -99,7 +107,7 @@ class test {
         return
 
         _AddCount() {
-            test.available.Text := 'Available: ' pool.Length
+            test_XttPool_110.available.Text := 'Available: ' pool.Length
         }
     }
     static HClickButtonShowByRect(*) {
@@ -121,8 +129,9 @@ class test {
         }
         duration := controls.Get('Duration').Edit.Text
         text := controls.Get('Text').Edit.Text
-        item := pool.ShowByRect(
+        item := pool.ShowByRectEx(
             text,
+            StrLen(controls.Get('Theme').Edit.Text) ? controls.Get('Theme').Edit.Text : unset,
             target,
             duration || 0,
             unset,
@@ -141,7 +150,7 @@ class test {
         return
 
         _AddCount() {
-            test.available.Text := 'Available: ' pool.Length
+            test_XttPool_110.available.Text := 'Available: ' pool.Length
         }
     }
     static HClickButtonRecallSelected(*) {
@@ -159,7 +168,7 @@ class test {
         return
 
         _AddCount() {
-            test.available.Text := 'Available: ' pool.Length
+            test_XttPool_110.available.Text := 'Available: ' pool.Length
         }
     }
 }
