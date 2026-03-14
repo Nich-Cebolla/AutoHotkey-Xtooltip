@@ -46,9 +46,9 @@ class demo {
         ; Show our window
         g.Show("h" (y + h + g.MarginY + 440))
 
-        ; Create a tracking tooltip. Since only one tooltip window can be visible at a time, we
-        ; should create another Xtooltip object so the tracking tooltip can be displayed at the same
-        ; time as the others.
+        ; Create a tracking tooltip. Since only one tooltip window can be visible at a time per
+        ; Xtooltip object, we must create another Xtooltip object so the tracking tooltip can be
+        ; displayed at the same time as the others.
         ; Let's create a similar theme but use red text
         themeRed := theme.Clone()
         themeRed.TextColor := XttRgb(255, 0, 0)

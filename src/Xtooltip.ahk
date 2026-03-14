@@ -1,7 +1,4 @@
 ﻿
-
-/**
- */
 class Xtooltip extends Xtooltip.Base {
     static __New() {
         this.DeleteProp('__New')
@@ -17,7 +14,7 @@ class Xtooltip extends Xtooltip.Base {
         Proto.TitleSize := 0
     }
     /**
-     * Registers each of XttCollection, ThemeCollection, and ThemeGroupCollection. When new
+     * @desc - Registers each of XttCollection, ThemeCollection, and ThemeGroupCollection. When new
      * {@link Xtooltip}, {@link XttTheme}, and {@link XttThemeGroup} objects are created, they
      * are added to their respective collection. Each collection is available from any instance
      * of {@link Xtooltip}, {@link XttTheme}, or {@link XttThemeGroup} on properties ThemeCollection,
@@ -40,7 +37,7 @@ class Xtooltip extends Xtooltip.Base {
         this.RegisterXttCollection()
     }
     /**
-     * Registers the ThemeCollection. When new {@link XttTheme} objects are created, they
+     * @desc - Registers the ThemeCollection. When new {@link XttTheme} objects are created, they
      * are added to the collection. The collection is available from any instance
      * of {@link Xtooltip}, {@link XttTheme}, or {@link XttThemeGroup} on property ThemeCollection.
      *
@@ -59,7 +56,7 @@ class Xtooltip extends Xtooltip.Base {
         return this.ThemeCollection
     }
     /**
-     * Registers the ThemeGroupCollection. When new {@link XttThemeGroup} objects are created, they
+     * @desc - Registers the ThemeGroupCollection. When new {@link XttThemeGroup} objects are created, they
      * are added to the collection. The collection is available from any instance
      * of {@link Xtooltip}, {@link XttTheme}, or {@link XttThemeGroup} on property ThemeGroupCollection.
      *
@@ -77,7 +74,7 @@ class Xtooltip extends Xtooltip.Base {
         return this.ThemeGroupCollection
     }
     /**
-     * Registers the XttCollection. When new {@link Xtooltip} objects are created, they
+     * @desc - Registers the XttCollection. When new {@link Xtooltip} objects are created, they
      * are added to the collection. The collection is available from any instance
      * of {@link Xtooltip}, {@link XttTheme}, or {@link XttThemeGroup} on property ThemeGroupCollection.
      *
@@ -96,7 +93,7 @@ class Xtooltip extends Xtooltip.Base {
         return this.XttCollection
     }
     /**
-     * Calls {@link Xtooltip.DeregisterThemeCollection}, {@link Xtooltip.DeregisterThemeGroupCollection},
+     * @desc - Calls {@link Xtooltip.DeregisterThemeCollection}, {@link Xtooltip.DeregisterThemeGroupCollection},
      * and {@link Xtooltip.DeregisterXttCollection}.
      *
      * @param {Boolean} [ClearCollection = false] - If true, calls `Map.Prototype.Clear` before
@@ -338,7 +335,7 @@ class Xtooltip extends Xtooltip.Base {
         }
     }
     /**
-     * Sends {@link https://learn.microsoft.com/en-us/windows/win32/controls/ttm-activate TTM_ACTIVATE}.
+     * @desc - Sends {@link https://learn.microsoft.com/en-us/windows/win32/controls/ttm-activate TTM_ACTIVATE}.
      * @param {Boolean} [Value = true] - Activation flag. If this parameter is TRUE, the tooltip
      * control is activated. If it is FALSE, the tooltip control is deactivated.
      */
@@ -347,7 +344,7 @@ class Xtooltip extends Xtooltip.Base {
         return SendMessage(TTM_ACTIVATE, Value, 0, this.Hwnd)
     }
     /**
-     * @description - Adds a {@link XttToolInfo.Params} object to the collection set on property
+     * @desc - Adds a {@link XttToolInfo.Params} object to the collection set on property
      * {@link Xtooltip#Tools}.
      *
      * Sends the {@link https://learn.microsoft.com/en-us/windows/win32/controls/ttm-addtool TTM_ADDTOOLW}
@@ -392,7 +389,7 @@ class Xtooltip extends Xtooltip.Base {
         }
     }
     /**
-     * @description - Creates a {@link XttToolInfo.Params} object with the needed values to associate
+     * @desc - Creates a {@link XttToolInfo.Params} object with the needed values to associate
      * a tooltip with a `Gui.Control` object. Whenever the user's mouse cursor hovers over the
      * control, the tooltip will display after a short delay. When the cursor leaves the control's
      * area, the tooltip will hide after a short delay.
@@ -416,7 +413,7 @@ class Xtooltip extends Xtooltip.Base {
         )
     }
     /**
-     * @description - Creates a {@link XttToolInfo.Params} object with the needed values to associate
+     * @desc - Creates a {@link XttToolInfo.Params} object with the needed values to associate
      * a tooltip with a `Gui.Control`'s client area. Whenever the user's mouse cursor enters into
      * the area, the tooltip will display after a short delay. When the cursor leaves the area, the
      * tooltip will hide after a short delay.
@@ -447,7 +444,7 @@ class Xtooltip extends Xtooltip.Base {
         )
     }
     /**
-     * @description - Creates a {@link XttToolInfo.Params} object with the needed values to associate
+     * @desc - Creates a {@link XttToolInfo.Params} object with the needed values to associate
      * a tooltip with a rectangular area within a window's client area. Whenever the user's mouse
      * cursor enters into the area, the tooltip will display after a short delay. When the cursor
      * leaves the area, the tooltip will hide after a short delay.
@@ -482,7 +479,7 @@ class Xtooltip extends Xtooltip.Base {
         )
     }
     /**
-     * @description - Creates a {@link XttToolInfo.Params} object with the needed values to associate
+     * @desc - Creates a {@link XttToolInfo.Params} object with the needed values to associate
      * a tooltip with a rectangular area within a window's client area. Whenever the user's mouse
      * cursor enters into the area, the tooltip will display after a short delay. When the cursor
      * leaves the area, the tooltip will hide after a short delay.
@@ -516,7 +513,7 @@ class Xtooltip extends Xtooltip.Base {
         )
     }
     /**
-     * @description - Creates a {@link XttToolInfo.Params} with the needed values to create a tracking tooltip
+     * @desc - Creates a {@link XttToolInfo.Params} with the needed values to create a tracking tooltip
      * (a tooltip which your code has full control over its visibility and position).
      *
      * Note that only one tracking tool can be added to a single Xtooltip.
@@ -564,7 +561,7 @@ class Xtooltip extends Xtooltip.Base {
         return ti
     }
     /**
-     * @description - Creates a {@link XttToolInfo.Params} object with the needed values to associate
+     * @desc - Creates a {@link XttToolInfo.Params} object with the needed values to associate
      * a tooltip with a window. Whenever the user's mouse cursor hovers over the window's client
      * area, the tooltip will display after a short delay. When the cursor leaves the window's
      * client area, the tooltip will hide after a short delay.
@@ -588,7 +585,7 @@ class Xtooltip extends Xtooltip.Base {
         )
     }
     /**
-     * Sends {@link https://learn.microsoft.com/en-us/windows/win32/controls/ttm-adjustrect TTM_ADJUSTRECT}.
+     * @desc - Sends {@link https://learn.microsoft.com/en-us/windows/win32/controls/ttm-adjustrect TTM_ADJUSTRECT}.
      * @param {XttRect|Buffer} RectObj - The {@link XttRect} or similar buffer.
      * @param {Boolean} [Flag = true] - The value to pass to wParam. If TRUE, `RectObj` is used to
      * specify a text-display rectangle and it receives the corresponding window rectangle. If FALSE,
@@ -601,7 +598,7 @@ class Xtooltip extends Xtooltip.Base {
         return RectObj
     }
     /**
-     * Sends {@link https://learn.microsoft.com/en-us/windows/win32/controls/ttm-deltool TTM_DELTOOL}.
+     * @desc - Sends {@link https://learn.microsoft.com/en-us/windows/win32/controls/ttm-deltool TTM_DELTOOL}.
      * @param {String} Key - The key associated with the tool.
      */
     DelTool(Key) {
@@ -611,7 +608,7 @@ class Xtooltip extends Xtooltip.Base {
         SendMessage(TTM_DELTOOLW, 0, ti.Ptr, this.Hwnd)
     }
     /**
-     * Destroys the tools then the tooltip.
+     * @desc - Destroys the tools then the tooltip.
      */
     Dispose() {
         hwnd := this.Hwnd
@@ -654,7 +651,7 @@ class Xtooltip extends Xtooltip.Base {
         }
     }
     /**
-     * Find a {@link XttToolInfo.Params} object using the hwnd and id.
+     * @desc - Find a {@link XttToolInfo.Params} object using the hwnd and id.
      *
      * @param {Integer} hwnd - The hwnd passed to {@link XttToolInfo.Prototype.__New~hwnd}.
      * The following are descriptions of what is passed to `toolHwnd` from the indicated methods:
@@ -685,13 +682,13 @@ class Xtooltip extends Xtooltip.Base {
         }
     }
     /**
-     * Sends {@link https://learn.microsoft.com/en-us/windows/win32/controls/ttm-gettipbkcolor TTM_GETTIPBKCOLOR}.
+     * @desc - Sends {@link https://learn.microsoft.com/en-us/windows/win32/controls/ttm-gettipbkcolor TTM_GETTIPBKCOLOR}.
      */
     GetBackColor() {
         return SendMessage(TTM_GETTIPBKCOLOR, 0, 0, this.Hwnd)
     }
     /**
-     * Sends {@link https://learn.microsoft.com/en-us/windows/win32/controls/ttm-getbubblesize TTM_GETBUBBLESIZE}.
+     * @desc - Sends {@link https://learn.microsoft.com/en-us/windows/win32/controls/ttm-getbubblesize TTM_GETBUBBLESIZE}.
      * @param {String} [Key] - The "key" associated with a {@link XttToolInfo.Params} object.
      * @param {VarRef} [OutWidth] - A variable that will receive the width.
      * @param {VarRef} [OutHeight] - A variable that will receive the height.
@@ -709,7 +706,7 @@ class Xtooltip extends Xtooltip.Base {
         }
     }
     /**
-     * @description - Attempts to get the current tool by sending TTM_GETCURRENTTOOLW. TTM_GETCURRENTTOOLW
+     * @desc - Attempts to get the current tool by sending TTM_GETCURRENTTOOLW. TTM_GETCURRENTTOOLW
      * will only retrieve the tooltip's text if the character count of the string is 79 or less
      * Sends {@link https://learn.microsoft.com/en-us/windows/win32/controls/ttm-getcurrenttool TTM_GETCURRENTTOOL}.
      * @param {VarRef} [OutToolInfo] - A variable that will receive the {@link XttToolInfo} object.
@@ -720,7 +717,7 @@ class Xtooltip extends Xtooltip.Base {
         return SendMessage(TTM_GETCURRENTTOOLW, 0, OutToolInfo.Ptr, this.Hwnd)
     }
     /**
-     * Sends {@link https://learn.microsoft.com/en-us/windows/win32/controls/ttm-getdelaytime TTM_GETDELAYTIME}.
+     * @desc - Sends {@link https://learn.microsoft.com/en-us/windows/win32/controls/ttm-getdelaytime TTM_GETDELAYTIME}.
      * @param {Integer} [Flag = 0] - One of the following:
      * - TTDT_AUTOMATIC - 0
      * - TTDT_RESHOW - 1
@@ -732,7 +729,7 @@ class Xtooltip extends Xtooltip.Base {
         return SendMessage(TTM_GETDELAYTIME, Flag, 0, this.Hwnd)
     }
     /**
-     * Sends {@link https://learn.microsoft.com/en-us/windows/win32/controls/ttm-getmargin TTM_GETMARGIN}.
+     * @desc - Sends {@link https://learn.microsoft.com/en-us/windows/win32/controls/ttm-getmargin TTM_GETMARGIN}.
      * @returns {XttRect}
      */
     GetMargin() {
@@ -741,14 +738,14 @@ class Xtooltip extends Xtooltip.Base {
         return rc
     }
     /**
-     * Sends {@link https://learn.microsoft.com/en-us/windows/win32/controls/ttm-getmaxtipwidth TTM_GETMAXTIPWIDTH}.
+     * @desc - Sends {@link https://learn.microsoft.com/en-us/windows/win32/controls/ttm-getmaxtipwidth TTM_GETMAXTIPWIDTH}.
      * @returns {Integer}
      */
     GetMaxWidth() {
         return SendMessage(TTM_GETMAXTIPWIDTH, 0, 0, this.Hwnd)
     }
     /**
-     * Sends {@link https://learn.microsoft.com/en-us/windows/win32/controls/ttm-gettext TTM_GETTEXT}.
+     * @desc - Sends {@link https://learn.microsoft.com/en-us/windows/win32/controls/ttm-gettext TTM_GETTEXT}.
      * @param {String} [Key] - The "key" associated with a {@link XttToolInfo.Params} object.
      * @param {Integer} [MaxChars] - The maximum characters to acquire from the tooltip. If unset,
      * the {@link XttToolInfo.Params} object must have a property {@link XttToolInfo.Params#StrLen}
@@ -789,14 +786,14 @@ class Xtooltip extends Xtooltip.Base {
         return ti.lpszText
     }
     /**
-     * Sends {@link https://learn.microsoft.com/en-us/windows/win32/controls/ttm-gettiptextcolor TTM_GETTIPTEXTCOLOR}.
+     * @desc - Sends {@link https://learn.microsoft.com/en-us/windows/win32/controls/ttm-gettiptextcolor TTM_GETTIPTEXTCOLOR}.
      * @returns {Integer}
      */
     GetTextColor() {
         return SendMessage(TTM_GETTIPTEXTCOLOR, 0, 0, this.Hwnd)
     }
     /**
-     * Sends {@link https://learn.microsoft.com/en-us/windows/win32/controls/ttm-gettitle TTM_GETTITLE}.
+     * @desc - Sends {@link https://learn.microsoft.com/en-us/windows/win32/controls/ttm-gettitle TTM_GETTITLE}.
      * @param {Integer} [MaxChars] - The maximum characters to acquire from the tooltip.
      * @param {VarRef} [OutIcon] - A variable that will receive the tooltip's icon.
      * @returns {String}
@@ -807,14 +804,14 @@ class Xtooltip extends Xtooltip.Base {
         return _ttGetTitle.Title
     }
     /**
-     * Sends {@link https://learn.microsoft.com/en-us/windows/win32/controls/ttm-gettoolcount TTM_GETTOOLCOUNT}.
+     * @desc - Sends {@link https://learn.microsoft.com/en-us/windows/win32/controls/ttm-gettoolcount TTM_GETTOOLCOUNT}.
      * @returns {Integer}
      */
     GetToolCount() {
         return SendMessage(TTM_GETTOOLCOUNT, 0, 0, this.Hwnd)
     }
     /**
-     * Sends {@link https://learn.microsoft.com/en-us/windows/win32/controls/ttm-gettoolinfo TTM_GETTOOLINFO}.
+     * @desc - Sends {@link https://learn.microsoft.com/en-us/windows/win32/controls/ttm-gettoolinfo TTM_GETTOOLINFO}.
      * @returns {XttToolInfo}
      */
     GetToolInfo(toolHwnd, toolId) {
@@ -823,7 +820,7 @@ class Xtooltip extends Xtooltip.Base {
         return ti
     }
     /**
-     * Gets a {@link XttToolInfo} object using the {@link XttToolInfo.Params} associated with `Key`, or
+     * @desc - Gets a {@link XttToolInfo} object using the {@link XttToolInfo.Params} associated with `Key`, or
      * if `Key` is unset, the current tool.
      * Sends {@link https://learn.microsoft.com/en-us/windows/win32/controls/ttm-gettoolinfo TTM_GETTOOLINFO}.
      *
@@ -846,7 +843,7 @@ class Xtooltip extends Xtooltip.Base {
         }
     }
     /**
-     * Returns nonzero if the tool has the TTF_TRACK flag.
+     * @desc - Returns nonzero if the tool has the TTF_TRACK flag.
      *
      * @param {String} [Key] - The "key" associated with a {@link XttToolInfo.Params} object. If unset,
      * gets information about the current tool.
@@ -857,7 +854,7 @@ class Xtooltip extends Xtooltip.Base {
         return this.GetToolInfoObj(Key ?? unset).Flags & TTF_TRACK
     }
     /**
-     * Sends {@link https://learn.microsoft.com/en-us/windows/win32/controls/ttm-newtoolrect TTM_NEWTOOLRECT}.
+     * @desc - Sends {@link https://learn.microsoft.com/en-us/windows/win32/controls/ttm-newtoolrect TTM_NEWTOOLRECT}.
      *
      * @param {String} [Key] - The "key" associated with a {@link XttToolInfo.Params} object.
      * @param {XttRect|Buffer} RectObj - The {@link XttRect} or similar buffer.
@@ -872,19 +869,19 @@ class Xtooltip extends Xtooltip.Base {
         SendMessage(TTM_NEWTOOLRECTW, 0, ti.Ptr, this.Hwnd)
     }
     /**
-     * Sends {@link https://learn.microsoft.com/en-us/windows/win32/controls/ttm-pop TTM_POP}.
+     * @desc - Sends {@link https://learn.microsoft.com/en-us/windows/win32/controls/ttm-pop TTM_POP}.
      */
     Pop() {
         SendMessage(TTM_POP, 0, 0, this.Hwnd)
     }
     /**
-     * Sends {@link https://learn.microsoft.com/en-us/windows/win32/controls/ttm-popup TTM_POPUP}.
+     * @desc - Sends {@link https://learn.microsoft.com/en-us/windows/win32/controls/ttm-popup TTM_POPUP}.
      */
     Popup() {
         SendMessage(TTM_POPUP, 0, 0, this.Hwnd)
     }
     /**
-     * Sends {@link https://learn.microsoft.com/en-us/windows/win32/controls/ttm-settipbkcolor TTM_SETTIPBKCOLOR}.
+     * @desc - Sends {@link https://learn.microsoft.com/en-us/windows/win32/controls/ttm-settipbkcolor TTM_SETTIPBKCOLOR}.
      * Also see {@link Xtooltip.Prototype.SetBackColorRGB}.
      * @param {Integer} Color - The COLORREF value.
      */
@@ -892,7 +889,7 @@ class Xtooltip extends Xtooltip.Base {
         SendMessage(TTM_SETTIPBKCOLOR, Color, 0, this.Hwnd)
     }
     /**
-     * @description - Calls
+     * @desc - Calls
      * {@link https://learn.microsoft.com/en-us/windows/win32/api/dwmapi/nf-dwmapi-dwmsetwindowattribute}
      * with DWMWA_WINDOW_CORNER_PREFERENCE to set the corner preference.
      */
@@ -907,7 +904,7 @@ class Xtooltip extends Xtooltip.Base {
         }
     }
     /**
-     * Sends {@link https://learn.microsoft.com/en-us/windows/win32/controls/ttm-settipbkcolor TTM_SETTIPBKCOLOR}.
+     * @desc - Sends {@link https://learn.microsoft.com/en-us/windows/win32/controls/ttm-settipbkcolor TTM_SETTIPBKCOLOR}.
      * Also see {@link Xtooltip.Prototype.SetBackColor}.
      * @param {Integer} R - The 0-255 red value.
      * @param {Integer} G - The 0-255 green value.
@@ -917,7 +914,7 @@ class Xtooltip extends Xtooltip.Base {
         SendMessage(TTM_SETTIPBKCOLOR, XttRGB(R, G, B), 0, this.Hwnd)
     }
     /**
-     * Sends {@link https://learn.microsoft.com/en-us/windows/win32/controls/ttm-setdelaytime TTM_SETDELAYTIME}.
+     * @desc - Sends {@link https://learn.microsoft.com/en-us/windows/win32/controls/ttm-setdelaytime TTM_SETDELAYTIME}.
      * @param {Integer} Delay - The new delay in milliseconds.
      * @param {Integer} [Flag = 0] - One of the following:
      * - 0 : TTDT_AUTOMATIC
@@ -929,7 +926,7 @@ class Xtooltip extends Xtooltip.Base {
         SendMessage(TTM_SETDELAYTIME, Flag, Delay & 0xFFFF, this.Hwnd)
     }
     /**
-     * Sends {@link https://learn.microsoft.com/en-us/windows/win32/controls/ttm-setmargin TTM_SETMARGIN}.
+     * @desc - Sends {@link https://learn.microsoft.com/en-us/windows/win32/controls/ttm-setmargin TTM_SETMARGIN}.
      *
      * This only updates the margins that are set. Unset margins remain their current value.
      *
@@ -955,14 +952,14 @@ class Xtooltip extends Xtooltip.Base {
         SendMessage(TTM_SETMARGIN, 0, rc.Ptr, this.Hwnd)
     }
     /**
-     * Sends {@link https://learn.microsoft.com/en-us/windows/win32/controls/ttm-setmargin TTM_SETMARGIN}.
+     * @desc - Sends {@link https://learn.microsoft.com/en-us/windows/win32/controls/ttm-setmargin TTM_SETMARGIN}.
      * @param {XttRect|Buffer} RectObj - The {@link XttRect} or similar buffer.
      */
     SetMargin2(RectObj) {
         SendMessage(TTM_SETMARGIN, 0, RectObj.Ptr, this.Hwnd)
     }
     /**
-     * Sends {@link https://learn.microsoft.com/en-us/windows/win32/controls/ttm-setmaxtipwidth TTM_SETMAXTIPWIDTH}.
+     * @desc - Sends {@link https://learn.microsoft.com/en-us/windows/win32/controls/ttm-setmaxtipwidth TTM_SETMAXTIPWIDTH}.
      * @param {Integer} Width - The maximum width for the tooltip's display area. If the text extends
      * beyond this width, the lines will wrap. Set to -1 to allow any width.
      * @returns {Integer} - The previous maximum width.
@@ -971,7 +968,7 @@ class Xtooltip extends Xtooltip.Base {
         return SendMessage(TTM_SETMAXTIPWIDTH, 0, Width, this.Hwnd)
     }
     /**
-     * Assigns a new name to the object. If the object has already been added to the XttCollection,
+     * @desc - Assigns a new name to the object. If the object has already been added to the XttCollection,
      * deletes that first then adds it again using the new name. This does the same thing if the
      * object has been added to a theme group.
      * @param {String} Name - The name.
@@ -993,7 +990,7 @@ class Xtooltip extends Xtooltip.Base {
         this.__Name := Name
     }
     /**
-     * Sends {@link https://learn.microsoft.com/en-us/windows/win32/controls/ttm-settiptextcolor TTM_SETTIPTEXTCOLOR}.
+     * @desc - Sends {@link https://learn.microsoft.com/en-us/windows/win32/controls/ttm-settiptextcolor TTM_SETTIPTEXTCOLOR}.
      * Also see {@link Xtooltip.Prototype.SetTextColorRGB}.
      * @param {Integer} Color - The COLORREF value.
      */
@@ -1001,7 +998,7 @@ class Xtooltip extends Xtooltip.Base {
         SendMessage(TTM_SETTIPTEXTCOLOR, Color, 0, this.Hwnd)
     }
     /**
-     * Sends {@link https://learn.microsoft.com/en-us/windows/win32/controls/ttm-settiptextcolor TTM_SETTIPTEXTCOLOR}.
+     * @desc - Sends {@link https://learn.microsoft.com/en-us/windows/win32/controls/ttm-settiptextcolor TTM_SETTIPTEXTCOLOR}.
      * Also see {@link Xtooltip.Prototype.SetTextColor}.
      * @param {Integer} R - The 0-255 red value.
      * @param {Integer} G - The 0-255 green value.
@@ -1011,7 +1008,7 @@ class Xtooltip extends Xtooltip.Base {
         SendMessage(TTM_SETTIPTEXTCOLOR, XttRGB(R, G, B), 0, this.Hwnd)
     }
     /**
-     * Sets a theme.
+     * @desc - Sets a theme.
      * @param {XttTheme|String} - The theme or the name of the theme in the collection.
      */
     SetTheme(Theme) {
@@ -1027,7 +1024,7 @@ class Xtooltip extends Xtooltip.Base {
         Theme.Apply(this)
     }
     /**
-     * Adds the {@link Xtooltip} to a theme group.
+     * @desc - Adds the {@link Xtooltip} to a theme group.
      * @param {XttThemeGroup|String} - The theme group or the name of the theme group in the collection.
      * @param {Boolean} [ApplyTheme = true] - If true, applies the group's active theme to the
      * {@link Xtooltip} object.
@@ -1047,7 +1044,7 @@ class Xtooltip extends Xtooltip.Base {
         }
     }
     /**
-     * Sends {@link https://learn.microsoft.com/en-us/windows/win32/controls/ttm-settitle TTM_SETTITLE}.
+     * @desc - Sends {@link https://learn.microsoft.com/en-us/windows/win32/controls/ttm-settitle TTM_SETTITLE}.
      * @param {Integer} [Icon = 0] - Either a handle to an icon (HICON), or one of the following:
      * - 0 : TTI_NONE
      * - 1 : TTI_INFO
@@ -1072,7 +1069,7 @@ class Xtooltip extends Xtooltip.Base {
         }
     }
     /**
-     * @description - Sends TTM_SETTOOLINFO to update a tool with new values. Before sending the
+     * @desc - Sends TTM_SETTOOLINFO to update a tool with new values. Before sending the
      * message, {@link Xtooltip.Prototype.SetToolInfo} performs some pre-processing and validation to
      * ensure there are no issues. Specifically:
      *
@@ -1149,7 +1146,7 @@ class Xtooltip extends Xtooltip.Base {
         SendMessage(TTM_SETTOOLINFOW, 0, NewToolInfo.Ptr, this.Hwnd)
     }
     /**
-     * Sends {@link https://learn.microsoft.com/en-us/windows/win32/controls/ttm-setwindowtheme TTM_SETWINDOWTHEME}.
+     * @desc - Sends {@link https://learn.microsoft.com/en-us/windows/win32/controls/ttm-setwindowtheme TTM_SETWINDOWTHEME}.
      * @param {String} TooltipVisualStyleName - The tooltip visual style to set.
      */
     SetWindowTheme(TooltipVisualStyleName) {
@@ -1158,7 +1155,7 @@ class Xtooltip extends Xtooltip.Base {
         SendMessage(TTM_SETWINDOWTHEME, 0, buf.Ptr, this.Hwnd)
     }
     /**
-     * Sends {@link https://learn.microsoft.com/en-us/windows/win32/controls/ttm-trackactivate TTM_TRACKACTIVATE}.
+     * @desc - Sends {@link https://learn.microsoft.com/en-us/windows/win32/controls/ttm-trackactivate TTM_TRACKACTIVATE}.
      * @param {String} Key - The "key" associated with the {@link XttToolInfo.Params} object.
      * @param {Boolean} Value - true to activate, false to deactivate.
      * @param {Integer} [X] - If `Value` is true, optionally specify the X and Y coordinates to
@@ -1174,7 +1171,7 @@ class Xtooltip extends Xtooltip.Base {
         SendMessage(TTM_TRACKACTIVATE, Value, ti.Ptr, this.Hwnd)
     }
     /**
-     * Sends {@link https://learn.microsoft.com/en-us/windows/win32/controls/ttm-trackactivate TTM_TRACKACTIVATE}
+     * @desc - Sends {@link https://learn.microsoft.com/en-us/windows/win32/controls/ttm-trackactivate TTM_TRACKACTIVATE}
      * and {@link https://learn.microsoft.com/en-us/windows/win32/controls/ttm-trackposition TTM_TRACKPOSITION}
      * to position the tooltip by the mouse.
      * @param {String} Key - The "key" associated with the {@link XttToolInfo.Params} object.
@@ -1189,7 +1186,7 @@ class Xtooltip extends Xtooltip.Base {
         SendMessage(TTM_TRACKACTIVATE, true, ti.Ptr, this.Hwnd)
     }
     /**
-     * Sends {@link https://learn.microsoft.com/en-us/windows/win32/controls/ttm-trackposition TTM_TRACKPOSITION}.
+     * @desc - Sends {@link https://learn.microsoft.com/en-us/windows/win32/controls/ttm-trackposition TTM_TRACKPOSITION}.
      * @param {Integer} X - The X screen coordinate position.
      * @param {Integer} Y - The Y screen coordinate position.
      */
@@ -1197,7 +1194,7 @@ class Xtooltip extends Xtooltip.Base {
         SendMessage(TTM_TRACKPOSITION, 0, (Y << 16) | (X & 0xFFFF), this.Hwnd)
     }
     /**
-     * Sends {@link https://learn.microsoft.com/en-us/windows/win32/controls/ttm-trackposition TTM_TRACKPOSITION}.
+     * @desc - Sends {@link https://learn.microsoft.com/en-us/windows/win32/controls/ttm-trackposition TTM_TRACKPOSITION}.
      * @param {Integer} [OffsetX = 0] - A number of pixels to add to the X coordinate.
      * @param {Integer} [OffsetY = 0] - A number of pixels to add to the Y coordinate.
      */
@@ -1207,13 +1204,13 @@ class Xtooltip extends Xtooltip.Base {
         SendMessage(TTM_TRACKPOSITION, 0, ((NumGet(pt, 4, 'int') + OffsetY) << 16) | ((NumGet(pt, 0, 'int') + OffsetX) & 0xFFFF), this.Hwnd)
     }
     /**
-     * Sends {@link https://learn.microsoft.com/en-us/windows/win32/controls/ttm-update TTM_UPDATE}.
+     * @desc - Sends {@link https://learn.microsoft.com/en-us/windows/win32/controls/ttm-update TTM_UPDATE}.
      */
     Update() {
         return SendMessage(TTM_UPDATE, 0, 0, this.Hwnd)
     }
     /**
-     * Sends {@link https://learn.microsoft.com/en-us/windows/win32/controls/ttm-updatetiptext TTM_UPDATETIPTEXT}.
+     * @desc - Sends {@link https://learn.microsoft.com/en-us/windows/win32/controls/ttm-updatetiptext TTM_UPDATETIPTEXT}.
      *
      * @param {String} Text - The text to display on the tooltip.
      * @param {String} Key - The "key" associated with the {@link XttToolInfo.Params} object.
@@ -1490,7 +1487,7 @@ class XttTheme extends Xtooltip.Base {
         }
     }
     /**
-     * Applies all of the theme options and sets the {@link XttTheme} object to property
+     * @desc - Applies all of the theme options and sets the {@link XttTheme} object to property
      * {@link Xtooltip#Theme}.
      * @param {Xtooltip} Xtt - The {@link Xtooltip} object.
      */
@@ -1552,7 +1549,7 @@ class XttTheme extends Xtooltip.Base {
         }
     }
     /**
-     * An alias for {@link XttTheme.Prototype.ApplySelect} added to match the name used by
+     * @desc - An alias for {@link XttTheme.Prototype.ApplySelect} added to match the name used by
      * {@link XttThemeGroup.Prototype.ApplySelection}.
      * @param {Xtooltip} Xtt - The {@link Xtooltip} object.
      * @param {Boolean} [Font = false] - If true, {@link XttTheme.Prototype.ApplyFont} will be called.
@@ -1568,7 +1565,7 @@ class XttTheme extends Xtooltip.Base {
         Xtt.SetTitle(this.Title || unset, IsNumber(this.Icon) ? this.Icon : unset)
     }
     /**
-     * Sets an {@link XttLogfont} object to property {@link XttTheme#Font}.
+     * @desc - Sets an {@link XttLogfont} object to property {@link XttTheme#Font}.
      * @param {Object|XttLogfont} Options - An object with options as property : value pairs,
      * or an {@link XttLogfont} object.
      */
@@ -1607,7 +1604,7 @@ class XttTheme extends Xtooltip.Base {
         }
     }
     /**
-     * Sets {@link XttTheme#BackColor}, {@link XttTheme#MaxWidth} and {@link XttTheme#TextColor}.
+     * @desc - Sets {@link XttTheme#BackColor}, {@link XttTheme#MaxWidth} and {@link XttTheme#TextColor}.
      * @param {Object} Options - An object with options as property : value pairs.
      */
     SetGeneral(Options) {
@@ -1618,7 +1615,7 @@ class XttTheme extends Xtooltip.Base {
         }
     }
     /**
-     * Sets an {@link XttRect} object to property {@link XttTheme#Margin}.
+     * @desc - Sets an {@link XttRect} object to property {@link XttTheme#Margin}.
      * @param {Object|XttRect} Options - An object with options as property : value pairs, or
      * an {@link XttRect} object.
      */
@@ -1653,7 +1650,7 @@ class XttTheme extends Xtooltip.Base {
         }
     }
     /**
-     * Sets property {@link XttTheme#Name}.
+     * @desc - Sets property {@link XttTheme#Name}.
      * @param {String} ThemeName - The name.
      */
     SetName(ThemeName) {
@@ -1668,7 +1665,7 @@ class XttTheme extends Xtooltip.Base {
         this.__Name := ThemeName
     }
     /**
-     * Updates the theme with new options. This only changes values that are present on the input
+     * @desc - Updates the theme with new options. This only changes values that are present on the input
      * `Options` object. If an option is absent from `Options`, that option does not get deleted
      * from the theme.
      * @param {Object} Options - An object with options as property : value pairs.
@@ -1688,7 +1685,7 @@ class XttTheme extends Xtooltip.Base {
         }
     }
     /**
-     * Sets {@link XttTheme#Title} and {@link XttTheme#Icon}.
+     * @desc - Sets {@link XttTheme#Title} and {@link XttTheme#Icon}.
      * @param {Object} Options - An object with options as property : value pairs.
      */
     SetTitle(Options) {
@@ -1824,7 +1821,7 @@ class XttThemeGroup extends Xtooltip.Base {
         }
     }
     /**
-     * An alias for {@link XttThemeGroup.Prototype.ApplySelection}, added to match the name used by
+     * @desc - An alias for {@link XttThemeGroup.Prototype.ApplySelection}, added to match the name used by
      * {@link XttTheme.Prototype.ApplySelect}.
      */
     ApplySelect(Theme?, Font := false, General := false, Margin := false, Title := false) => this.ApplySelection(Theme ?? unset, Font, General, Margin, Title)
@@ -1865,7 +1862,7 @@ class XttThemeGroup extends Xtooltip.Base {
         return this.__ActiveTheme
     }
     /**
-     * Sets light mode and dark mode theme names, allowing your code to call
+     * @desc - Sets light mode and dark mode theme names, allowing your code to call
      * {@link XttThemeGroup.Prototype.ActivateLight} to activate one or the other.
      * @param {String} [LightModeName] - The name of the light mode theme.
      * @param {String} [DarkModeName] - The name of the dark mode theme.
@@ -2036,7 +2033,7 @@ class XttToolInfo {
         }
     }
     /**
-     * @description - Sets the `lpszText` member.
+     * @desc - Sets the `lpszText` member.
      *
      * @param {String|Buffer} [Value] - The text to display on the tooltip, or a buffer containing
      * the text.
@@ -2171,7 +2168,7 @@ class XttToolInfo {
             this.Prototype.Props := [ 'uFlags', 'hwnd', 'uId', 'L', 'T', 'R', 'B', 'hInst', 'lParam' ]
         }
         /**
-         * @description - Validates the parameters and copies their values to this instance of
+         * @desc - Validates the parameters and copies their values to this instance of
          * {@link XttToolInfo.Params}.
          *
          * @param {Xtooltip} HwndXtt - The value of {@link Xtooltip#Hwnd}.
@@ -2295,7 +2292,7 @@ class XttToolInfo {
             }
         }
         /**
-         * @description - The purpose of {@link ToolInfo.Params.Prototype.Call} is to prepare a
+         * @desc - The purpose of {@link ToolInfo.Params.Prototype.Call} is to prepare a
          * TTTOOLINFO structure with new values before sending TTM_SETTOOLINFO.
          *
          * {@link ToolInfo.Params.Prototype.Call} validates the property values on this object, gets the
@@ -2471,9 +2468,7 @@ class TtGetTitle {
 }
 
 class XttCollection extends XttCollectionBase {
-
 }
-
 class ToolInfoParamsCollection extends XttCollectionBase {
 }
 class XttThemeCollection extends XttCollectionBase {
@@ -2525,24 +2520,12 @@ class XttErrors {
     }
 }
 
-/**
- * See the bottom of the file for static Windows API symbols related to fonts.
- * Note you cannot use an Ahk `Gui` handle with {@link XttLogfont}; it has to be a `Gui.Control` or some
- * other type of window.
- * @classdesc - A wrapper around the LOGFONT structure.
- * {@link https://learn.microsoft.com/en-us/windows/win32/api/dimm/ns-dimm-logfontw}
- */
 class XttLogfont {
     static __New() {
         this.DeleteProp('__New')
-        global WM_GETFONT := 0x0031, WM_SETFONT := 0x0030, LF_DEFAULT_ENCODING := 'UTF-16'
+        XttLogfont_SetConstants()
         Proto := this.Prototype
         Proto.Encoding := LF_DEFAULT_ENCODING
-        /**
-         * The structure's size.
-         * @memberof XttLogfont
-         * @instance
-         */
         Proto.Size :=
         4 + ; LONG  lfHeight                    0
         4 + ; LONG  lfWidth                     4
@@ -2561,7 +2544,7 @@ class XttLogfont {
         Proto.Handle := Proto.Hwnd := 0
     }
     /**
-     * @description - Creates a {@link XttLogfont} object using a ptr address instead of a buffer. The
+     * @desc - Creates a {@link XttLogfont} object using a ptr address instead of a buffer. The
      * expected use case for this is when a Windows API function returns a LOGFONT structure. In
      * such cases, the system is managing that memory, and so it should be assumed that the memory
      * will only be available temporarily. When using {@link XttLogfont.FromPtr}, do not cache a reference to
@@ -2575,12 +2558,20 @@ class XttLogfont {
         return lf
     }
     /**
-     * Constructs a new {@link XttLogfont} object, optionally associating the object with a window handle.
+     * @desc - A wrapper around the
+     * {@link https://learn.microsoft.com/en-us/windows/win32/api/dimm/ns-dimm-logfontw LOGFONT}
+     * structure.
+     *
+     * Note you cannot use an Ahk `Gui` handle with {@link XttLogfont}; it has to be a `Gui.Control`
+     * or some other type of window.
+     *
      * @class
+     *
      * @param {Integer} [Hwnd = 0] - The window handle to associate with the {@link XttLogfont} object. If
      * `Hwnd` is set with a nonzero value, {@link XttLogfont.Prototype.Call} is called to initialize this
      * {@link XttLogfont} object's properties with values obtained from the window. If `Hwnd` is zero, this
      * {@link XttLogfont} object's properties will all be zero.
+     *
      * @return {XttLogfont}
      */
     __New(Hwnd := 0) {
@@ -2608,7 +2599,7 @@ class XttLogfont {
         }
     }
     /**
-     * @description - Calls `CreateFontIndirectW` then sends WM_SETFONT to the window associated
+     * @desc - Calls `CreateFontIndirectW` then sends WM_SETFONT to the window associated
      * with this {@link XttLogfont} object.
      * @param {Boolean} [Redraw = true] - The value to pass to the `lParam` parameter when sending
      * WM_SETFONT. If true, the control redraws itself.
@@ -2623,7 +2614,7 @@ class XttLogfont {
         }
     }
     /**
-     * @description - Sends WM_GETFONT to the window associated with this {@link XttLogfont} object, updating
+     * @desc - Sends WM_GETFONT to the window associated with this {@link XttLogfont} object, updating
      * this object's properties with the values obtained from the window.
      * @throws {OSError} - Failed to get font object.
      */
@@ -2634,7 +2625,7 @@ class XttLogfont {
         }
     }
     /**
-     * @description - Copies the bytes from this {@link XttLogfont} object's buffer to another buffer.
+     * @desc - Copies the bytes from this {@link XttLogfont} object's buffer to another buffer.
      * @param {XttLogfont|Buffer|Object} [Buf] - If set, one of the following three kinds of objects:
      * - A {@link XttLogfont} object.
      * - A `Buffer` object.
@@ -2689,7 +2680,7 @@ class XttLogfont {
         return Buf
     }
     /**
-     * @description - If a font object has been created by this {@link XttLogfont} object, the font object
+     * @desc - If a font object has been created by this {@link XttLogfont} object, the font object
      * is deleted.
      */
     DisposeFont() {
@@ -2699,7 +2690,7 @@ class XttLogfont {
         }
     }
     /**
-     * @description - Updates a property's value and calls {@link XttLogfont.Prototype.Apply} immediately afterward.
+     * @desc - Updates a property's value and calls {@link XttLogfont.Prototype.Apply} immediately afterward.
      * @param {String} Name - The name of the property.
      * @param {String|Number} Value - The value.
      */
@@ -2866,6 +2857,24 @@ class XttLogfont {
     }
 }
 
+XttLogfont_SetConstants(force := false) {
+    global
+    if IsSet(XttLogfont_constants_set) && !force {
+        return
+    }
+    if !IsSet(WM_GETFONT) {
+        WM_GETFONT := 0x0031
+    }
+    if !IsSet(WM_SETFONT) {
+        WM_SETFONT := 0x0030
+    }
+    if !IsSet(LF_DEFAULT_ENCODING) {
+        LF_DEFAULT_ENCODING := 'UTF-16'
+    }
+    XttLogfont_constants_set := true
+}
+
+
 XttRGB(r := 0, g := 0, b := 0) {
     return (r & 0xFF) | ((g & 0xFF) << 8) | ((b & 0xFF) << 16)
 }
@@ -3021,7 +3030,7 @@ Xtooltip_SetConstants(force := false) {
 }
 
 /**
- * @description - Enables the usage of the "_S" suffix when calling {@link Xtooltip} instance methods,
+ * @desc - Enables the usage of the "_S" suffix when calling {@link Xtooltip} instance methods,
  * {@link XttToolInfo} static methods, {@link XttToolInfo} instance methods, {@link XttRect} static methods, and {@link XttRect}
  * instance methods. By including "_S" at the end of a method call, the function will set the
  * thread dpi awareness context before calling the method.
