@@ -180,7 +180,7 @@ class Xtooltip extends Xtooltip.Base {
      * convert RGB to COLORREF.
      * @param {XttTheme} [Options.Theme] - The `XttTheme` object to apply to the tooltip. See [Themes](#themes).
      * @param {XttThemeGroup} [Options.ThemeGroup] - The `XttThemeGroup` object to which to add the `Xtooltip` object.
-     * See [Theme groups](#theme-groups).
+     * See {@link XttThemeGroup}.
      * @param {String} [Options.Title] - The title to display in the tooltip window.
      * @param {Integer} [Options.Underline = 0] - Set to 1 to underline the text.
      * @param {Integer} [Options.Weight = 400] - The font weight.
