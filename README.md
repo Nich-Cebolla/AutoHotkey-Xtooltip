@@ -488,7 +488,7 @@ To change the active theme use `XttPool.Prototype.ThemeActivate`.
 
 ## XttPool.Item
 
-The `XttPool.Item` object is returned by each of the three `XttPool` instance methods. Your code
+The `XttPool.Item` object is returned by the `XttPool` instance methods. Your code
 can cache a reference to the `XttPool.Item` object and use it to manipulate the tooltip
 window at-will. `XttPool.Item` has four methods:
 
