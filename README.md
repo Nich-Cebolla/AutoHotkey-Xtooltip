@@ -419,7 +419,7 @@ themeGroup.ThemeActivate("MyTheme")
 pool := XttPool(themeGroup)
 ```
 
-Once the object is created, your code simply calls any of its three methods to display a tooltip.
+Once the object is created, your code simply calls its methods to display a tooltip.
 
 You can call the methods multiple times to display any number of tooltip windows at the same
 time.
