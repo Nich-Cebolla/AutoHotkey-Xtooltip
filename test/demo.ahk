@@ -52,7 +52,7 @@ class demo {
         ; Let's create a similar theme but use red text
         themeRed := theme.Clone()
         themeRed.TextColor := XttRgb(255, 0, 0)
-        xttTracking := this.xttTracking := Xtooltip({ Theme: themeRed })
+        xttTracking := this.xttTracking := Xtooltip({ Theme: themeRed  })
         g.GetPos(&gx, &gy, &gw, &gh)
         gx += gw - 40
         gy += gh - 50

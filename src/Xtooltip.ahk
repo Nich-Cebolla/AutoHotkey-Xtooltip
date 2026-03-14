@@ -832,7 +832,7 @@ class Xtooltip extends Xtooltip.Base {
     GetToolInfoObj(Key?) {
         if IsSet(Key) {
             tiParams := this.Tools.Get(Key)
-            ti := XttToolInfo(this.Hwnd, tiParams.Hwnd, tiParams.Id)
+            ti := XttToolInfo(this.Hwnd, tiParams.Hwnd, tiParams.uId)
             SendMessage(TTM_GETTOOLINFOW, 0, ti.Ptr, this.Hwnd)
             return ti
         } else if this.GetToolCount() {
@@ -1202,6 +1202,94 @@ class Xtooltip extends Xtooltip.Base {
         pt := Buffer(8)
         DllCall('GetCursorPos', 'ptr', pt, 'int')
         SendMessage(TTM_TRACKPOSITION, 0, ((NumGet(pt, 4, 'int') + OffsetY) << 16) | ((NumGet(pt, 0, 'int') + OffsetX) & 0xFFFF), this.Hwnd)
+    }
+    /**
+     * @desc - Moves the tracking tooltip window near the cursor.
+     *
+     * @param {String} [Dimension = "X"] - Either "X" or "Y", specifying if the tooltip window is to
+     * be moved adjacent to the cursor on either the X or Y axis. If "X", the tooltip window is moved
+     * to the left or right of the cursor, and the window's vertical center is aligned with the
+     * cursor's vertical center. If "Y", the tooltip window is moved to the top or bottom of the
+     * cursor, and the tooltip window's horizontal center is aligned with the cursor's horizontal center.
+     *
+     * @param {String} [Prefer = ""] - A character indicating a preferred side. If `Prefer` is an
+     * empty string, the function will move the tooltip window to the side the has the greatest amount of
+     * space between the monitor's border and the cursor. If `Prefer` is any of the following values,
+     * the tooltip window will be moved to that side unless doing so would cause the the tooltip window
+     * to extend outside of the monitor's work area.
+     * - "L" - Prefers the left side.
+     * - "T" - Prefers the top side.
+     * - "R" - Prefers the right side.
+     * - "B" - Prefes the bottom.
+     *
+     * @param {Number} [Padding = 0] - The amount of padding to leave between the tooltip window
+     * and the cursor.
+     */
+    TrackMoveByMouse(Dimension := 'X', Prefer := '', Padding := 0) {
+        rc := XttRect.Window(this.Hwnd)
+        XttRectMoveAdjacent(rc, , , Dimension, Prefer, Padding, 2)
+        SendMessage(TTM_TRACKPOSITION, 0, (rc.T << 16) | (rc.L & 0xFFFF), this.Hwnd)
+    }
+    /**
+     * @description - Calculates the optimal position to move the tooltip window adjacent to another
+     * window / rectangle while ensuring that the tooltip window stays within the monitor's work area.
+     * If successful, moves the tracking tooltip window to the new position.
+     *
+     * @param {Integer|XttRect} [Target] - One of the following:
+     *
+     * - If an integer, it is a window's handle (hwnd). The tooltip window will be moved adjacent to
+     *   that window.
+     * - If an {@link XttRect} object, the tooltip window will be moved adjacent to the rectangle.
+     *
+     * @param {*} [ContainerRect] - If set, `ContainerRect` defines the boundaries which restrict
+     * the area that the tooltip window is permitted to be moved within. The object must have poperties
+     * { L, T, R, B } to be valid. If unset, the work area of the monitor with the greatest area of
+     * intersection with `Target` is used.
+     *
+     * @param {String} [Dimension = "X"] - Either "X" or "Y", specifying if the tooltip window is to
+     * be moved adjacent to `Target` on either the X or Y axis. If "X", the tooltip window is moved
+     * to the left or right of `Target`, and the tooltip window's vertical center is aligned with
+     * `Target`'s vertical center. If "Y", the tooltip window is moved to the top or bottom of
+     * `Target`, and the tooltip window's horizontal center is aligned with `Target`'s horizontal center.
+     *
+     * @param {String} [Prefer = ""] - A character indicating a preferred side. If `Prefer` is an
+     * empty string, the function will move the rectangle to the side the has the greatest amount of
+     * space between the monitor's border and `Target`. If `Prefer` is any of the following values,
+     * the rectangle will be moved to that side unless doing so would cause the the rectangle to extend
+     * outside of the monitor's work area.
+     * - "L" - Prefers the left side.
+     * - "T" - Prefers the top side.
+     * - "R" - Prefers the right side.
+     * - "B" - Prefes the bottom.
+     *
+     * @param {Number} [Padding = 0] - The amount of padding to leave between the tooltip window and `Target`.
+     *
+     * @param {Integer} [InsufficientSpaceAction = 2] - Determines the action taken if there is
+     * insufficient space to move the rectangle adjacent to `Target` while also keeping the rectangle
+     * entirely within the monitor's work area. The function will always sacrifice some of the padding
+     * if it will allow the rectangle to stay within the monitor's work area. If the space is still
+     * insufficient, the action can be one of the following:
+     * - 0 : The function will not move the rectangle.
+     * - 1 : The function will move the rectangle, allowing the rectangle's area to extend into a
+     *   non-visible region of the monitor.
+     * - 2 : The function will move the rectangle, keeping the rectangle's area within the monitor's work
+     *   area by allowing the rectangle to overlap with `Target`.
+     *
+     * @returns {Integer} - If the insufficient space action was invoked, returns 1. Else, returns 0.
+     */
+    TrackMoveByRect(Target, ContainerRect?, Dimension := 'X', Prefer := '', Padding := 0, InsufficientSpaceAction := 2) {
+        if !IsObject(Target) {
+            Target := XttRect.Window(Target)
+        }
+        rc := XttRect.Window(this.Hwnd)
+        if XttRectMoveAdjacent(rc, Target, ContainerRect?, Dimension, Prefer, Padding, InsufficientSpaceAction) {
+            if InsufficientSpaceAction {
+                SendMessage(TTM_TRACKPOSITION, 0, (rc.T << 16) | (rc.L & 0xFFFF), this.Hwnd)
+            }
+            return 1
+        } else {
+            SendMessage(TTM_TRACKPOSITION, 0, (rc.T << 16) | (rc.L & 0xFFFF), this.Hwnd)
+        }
     }
     /**
      * @desc - Sends {@link https://learn.microsoft.com/en-us/windows/win32/controls/ttm-update TTM_UPDATE}.
@@ -1772,6 +1860,24 @@ class XttThemeGroup extends Xtooltip.Base {
             this.ThemeActivate(this.DarkModeName)
         }
     }
+    /**
+     * @desc - Applies the theme to all of the {@link Xtooltip} objects in the collection
+     * {@link XttThemeGroup#Xtooltips}.
+     *
+     * Note this method does **not** change the value of property {@link XttThemeGroup#ActiveTheme}.
+     * Call {@link XttThemeGroup.Prototype.ThemeActivate} to set a new active theme.
+     *
+     * @param {String|XttTheme} [Theme] - If set, one of the following:
+     *
+     * - The name of the theme as string. The name must already exist as an item in the collection
+     *   {@link XttThemeGroup#Themes}.
+     * - The {@link XttTheme} object. If passing an {@link XttTheme} object, it does **not** need to
+     *   exist in the collection {@link XttThemeGroup#Themes}, but it can.
+     *
+     * If set, this changes the active theme ({@link XttThemeGroup#ActiveTheme}) to `Theme`.
+     *
+     * If unset, the active theme {@link XttThemeGroup#ActiveTheme} is applied.
+     */
     Apply(Theme?) {
         if IsSet(Theme) {
             if !IsObject(Theme) {
@@ -1784,6 +1890,36 @@ class XttThemeGroup extends Xtooltip.Base {
             Theme.Apply(xtt)
         }
     }
+    /**
+     * @desc - Applies only the font-related options to all of the {@link Xtooltip} objects in the
+     * collection {@link XttThemeGroup#Xtooltips}. Specifically:
+     *
+     * - CharSet
+     * - ClipPrecision
+     * - Escapement
+     * - Family
+     * - Italic
+     * - FaceName
+     * - OutPrecision
+     * - Pitch
+     * - Height
+     * - Quality
+     * - FontSize
+     * - Strikeout
+     * - Underline
+     * - Weight
+     *
+     * Note this method does **not** change the value of property {@link XttThemeGroup#ActiveTheme}.
+     *
+     * @param {String|XttTheme} [Theme] - If set, one of the following:
+     *
+     * - The name of the theme as string. The name must already exist as an item in the collection
+     *   {@link XttThemeGroup#Themes}.
+     * - The {@link XttTheme} object. If passing an {@link XttTheme} object, it does **not** need to
+     *   exist in the collection {@link XttThemeGroup#Themes}, but it can.
+     *
+     * If unset, the active theme {@link XttThemeGroup#ActiveTheme} is applied.
+     */
     ApplyFont(Theme?) {
         if IsSet(Theme) {
             if !IsObject(Theme) {
@@ -1796,6 +1932,26 @@ class XttThemeGroup extends Xtooltip.Base {
             Theme.ApplyFont(xtt)
         }
     }
+    /**
+     * @desc - Applies only the following options to all of the {@link Xtooltip} objects in the
+     * collection {@link XttThemeGroup#Xtooltips}:
+     *
+     * - BackColor
+     * - CornerPreference
+     * - MaxWidth
+     * - TextColor
+     *
+     * Note this method does **not** change the value of property {@link XttThemeGroup#ActiveTheme}.
+     *
+     * @param {String|XttTheme} [Theme] - If set, one of the following:
+     *
+     * - The name of the theme as string. The name must already exist as an item in the collection
+     *   {@link XttThemeGroup#Themes}.
+     * - The {@link XttTheme} object. If passing an {@link XttTheme} object, it does **not** need to
+     *   exist in the collection {@link XttThemeGroup#Themes}, but it can.
+     *
+     * If unset, the active theme {@link XttThemeGroup#ActiveTheme} is applied.
+     */
     ApplyGeneral(Theme?) {
         if IsSet(Theme) {
             if !IsObject(Theme) {
@@ -1808,6 +1964,26 @@ class XttThemeGroup extends Xtooltip.Base {
             Theme.ApplyGeneral(xtt)
         }
     }
+    /**
+     * @desc - Applies only the following options to all of the {@link Xtooltip} objects in the
+     * collection {@link XttThemeGroup#Xtooltips}:
+     *
+     * - L
+     * - T
+     * - R
+     * - B
+     *
+     * Note this method does **not** change the value of property {@link XttThemeGroup#ActiveTheme}.
+     *
+     * @param {String|XttTheme} [Theme] - If set, one of the following:
+     *
+     * - The name of the theme as string. The name must already exist as an item in the collection
+     *   {@link XttThemeGroup#Themes}.
+     * - The {@link XttTheme} object. If passing an {@link XttTheme} object, it does **not** need to
+     *   exist in the collection {@link XttThemeGroup#Themes}, but it can.
+     *
+     * If unset, the active theme {@link XttThemeGroup#ActiveTheme} is applied.
+     */
     ApplyMargin(Theme?) {
         if IsSet(Theme) {
             if !IsObject(Theme) {
@@ -1825,6 +2001,33 @@ class XttThemeGroup extends Xtooltip.Base {
      * {@link XttTheme.Prototype.ApplySelect}.
      */
     ApplySelect(Theme?, Font := false, General := false, Margin := false, Title := false) => this.ApplySelection(Theme ?? unset, Font, General, Margin, Title)
+    /**
+     * @desc - Applies only the selected options to all of the {@link Xtooltip} objects in the
+     * collection {@link XttThemeGroup#Xtooltips}.
+     *
+     * Note this method does **not** change the value of property {@link XttThemeGroup#ActiveTheme}.
+     *
+     * @param {String|XttTheme} [Theme] - If set, one of the following:
+     *
+     * - The name of the theme as string. The name must already exist as an item in the collection
+     *   {@link XttThemeGroup#Themes}.
+     * - The {@link XttTheme} object. If passing an {@link XttTheme} object, it does **not** need to
+     *   exist in the collection {@link XttThemeGroup#Themes}, but it can.
+     *
+     * If unset, the active theme {@link XttThemeGroup#ActiveTheme} is applied.
+     *
+     * @param {Boolean} [Font = false] - If true, the font options are applied. If false, the font
+     * options are not applied.
+     *
+     * @param {Boolean} [General= false] - If true, BackColor, CornerPreference, MaxWidth, and TextColor
+     * are applied. If false, these options are not applied.
+     *
+     * @param {Boolean} [Margin= false] - If true, the margin options L, T, R, and B are applied. If
+     * false, the margin options are not applied.
+     *
+     * @param {Boolean} [Title= false] - If true, the options Icon and Title are applied. If false,
+     * the title options are not applied.
+     */
     ApplySelection(Theme?, Font := false, General := false, Margin := false, Title := false) {
         if IsSet(Theme) {
             if !IsObject(Theme) {
@@ -1846,6 +2049,24 @@ class XttThemeGroup extends Xtooltip.Base {
             this.ApplyTitle(Theme)
         }
     }
+    /**
+     * @desc - Applies only the following options to all of the {@link Xtooltip} objects in the
+     * collection {@link XttThemeGroup#Xtooltips}:
+     *
+     * - Icon
+     * - Title
+     *
+     * Note this method does **not** change the value of property {@link XttThemeGroup#ActiveTheme}.
+     *
+     * @param {String|XttTheme} [Theme] - If set, one of the following:
+     *
+     * - The name of the theme as string. The name must already exist as an item in the collection
+     *   {@link XttThemeGroup#Themes}.
+     * - The {@link XttTheme} object. If passing an {@link XttTheme} object, it does **not** need to
+     *   exist in the collection {@link XttThemeGroup#Themes}, but it can.
+     *
+     * If unset, the active theme {@link XttThemeGroup#ActiveTheme} is applied.
+     */
     ApplyTitle(Theme?) {
         if IsSet(Theme) {
             if !IsObject(Theme) {
@@ -1858,6 +2079,12 @@ class XttThemeGroup extends Xtooltip.Base {
             Theme.ApplyTitle(xtt)
         }
     }
+    /**
+     * @desc - Returns the active {@link XttTheme} object (the value of property
+     * {@link XttThemeGroup#ActiveTheme}).
+     *
+     * @returns {XttTheme}
+     */
     GetActiveTheme() {
         return this.__ActiveTheme
     }
@@ -1875,6 +2102,12 @@ class XttThemeGroup extends Xtooltip.Base {
             this.DarkModeName := DarkModeName
         }
     }
+    /**
+     * @desc - Changes the name of this {@link XttThemeGroup} object and updates the collection
+     * accordingly.
+     *
+     * @param {String} GroupName - The new name.
+     */
     SetName(GroupName) {
         if this.ThemeGroupCollection {
             if this.ThemeGroupCollection.Has(this.__Name) {
@@ -1887,6 +2120,21 @@ class XttThemeGroup extends Xtooltip.Base {
             xtt.ThemeGroupName := GroupName
         }
     }
+    /**
+     * @desc - Activates a theme. When a theme is activated, it is applied to every
+     * {@link Xtooltip} object in the collection {@link XttThemeGroup#Xtooltips}. Also, the
+     * value of property {@link XttThemeGroup#ActiveTheme} is set with the {@link XttTheme} object.
+     *
+     * @param {String|XttTheme} - One of the following:
+     * - The name of a {@link XttTheme} object as string.
+     * - An {@link XttTheme} object.
+     *
+     * If the {@link XttTheme} object does not already exist in the collection
+     * {@link XttThemeGroup#Themes}, it gets added to the collection.
+     *
+     * @throws {Error} - "A theme must be set with a name to be added to a theme group."
+     * @throws {Error} - "Unable to find a theme with the input name."
+     */
     ThemeActivate(Theme) {
         if IsObject(Theme) {
             if !Theme.__Name {
@@ -1894,21 +2142,36 @@ class XttThemeGroup extends Xtooltip.Base {
                 XttErrors.ThrowThemeGroupNoThemeName()
             }
             this.Themes.Set(Theme.__Name, Theme)
+        } else if this.Themes.Has(Theme) {
+            Theme := this.Themes.Get(Theme)
+        } else if this.ThemeCollection && this.ThemeCollection.Has(Theme) {
+            Theme := this.ThemeCollection.Get(Theme)
+            this.Themes.Set(Theme.__Name, Theme)
         } else {
-            if this.Themes.Has(Theme) {
-                Theme := this.Themes.Get(Theme)
-            } else if this.ThemeCollection && this.ThemeCollection.Has(Theme) {
-                Theme := this.ThemeCollection.Get(Theme)
-                this.Themes.Set(Theme.__Name, Theme)
-            } else {
-                throw Error('Unable to find a theme with the input name.', , Theme)
-            }
+            throw Error('Unable to find a theme with the input name.', , Theme)
         }
         if this.Xtooltips.Count {
             this.Apply(Theme)
         }
         this.__ActiveTheme := Theme
     }
+    /**
+     * @desc - Adds a theme to the collection {@link XttThemeGroup#Themes}.
+     *
+     * @param {Object|String|XttTheme} Theme - One of the following:
+     *
+     * - The name of an {@link XttTheme} object as string. This is only valid if your code has
+     *   called {@link Xtooltip.RegisterThemeCollection} or {@link Xtooltip.RegisterAllCollections}.
+     * - An object with {@link XttTheme} options as property : value pairs. If `Theme` is an object,
+     *   it gets passed to {@link XttTheme.Prototype.__New} to create a new {@link XttTheme} object.
+     * - An {@link XttTheme} object.
+     *
+     * @param {Boolean} [Activate = true] - If true, applies the theme to every {@link Xtooltip}
+     * in the collection {@link XttThemeGroup#Xtooltips}, and sets property
+     * {@link XttThemeGroup#ActiveTheme} with the {@link XttTheme} object.
+     *
+     * @throws {Error} - "A theme must be set with a name to be added to a theme group."
+     */
     ThemeAdd(Theme, Activate := true) {
         if IsObject(Theme) {
             if not Theme is XttTheme {
@@ -1930,30 +2193,71 @@ class XttThemeGroup extends Xtooltip.Base {
         }
         return Theme
     }
+    /**
+     * @desc - Adds an array of {@link XttTheme} objects to the collection {@link XttThemeGroup#Themes}.
+     *
+     * @param {XttTheme[]} Themes - An array of {@link XttTheme} objects.
+     */
     ThemeAddList(Themes) {
         for theme in Themes {
             this.ThemeAdd(theme, false)
         }
     }
+    /**
+     * @desc - Deletes an {@link XttTheme} object from the collection {@link XttThemeGroup#Themes}.
+     *
+     * @param {String|XttTheme} Theme - One of the following:
+     *
+     * - The name of a {@link XttTheme} object as string.
+     * - An {@link XttTheme} object.
+     */
     ThemeDelete(Theme) {
         this.Themes.Delete(IsObject(Theme) ? Theme.__Name : Theme)
     }
+    /**
+     * @desc - Returns the {@link XttTheme} object.
+     *
+     * @param {String} ThemeName - The name of a {@link XttTheme} object as string.
+     */
     ThemeGet(ThemeName) {
         return this.Themes.Get(ThemeName)
     }
+    /**
+     * @desc - Adds a theme to the collection {@link XttThemeGroup#Themes}.
+     *
+     * @param {XttTheme} Theme - An {@link XttTheme} object.
+     *
+     * @throws {Error} - "A theme must be set with a name to be added to a theme group."
+     */
     ThemeSet(Theme) {
-        if !Theme.HasOwnProp('__Name') {
+        if !Theme.__Name {
             ; If you get this error, call `ThemeObj.SetName("SomeName")`.
             XttErrors.ThrowThemeGroupNoThemeName()
         }
         this.Themes.Set(Theme.__Name, Theme)
     }
+    /**
+     * @desc - Changes the value of a theme option.
+     *
+     * @param {String} OptionName - The name of the option to update.
+     *
+     * @param {*} Value - The new value.
+     *
+     * @param {Boolean} [Apply = true] - If true, updates the options in the option category associated
+     * with `OptionName` for every {@link Xtooltip} in the collection {@link XttThemeGroup#Xtooltips}.
+     */
     ThemeSetValue(OptionName, Value, Apply := true) {
         this.__ActiveTheme.%OptionName% := Value
         if Apply {
             this.Apply%XttTheme.GetOptionCategory(OptionName)%()
         }
     }
+    /**
+     * @desc - Toggles the light / dark mode themes. See
+     * {@link XttThemeGroup.Prototype.SetLightMode}.
+     *
+     * Use {@link XttThemeGroup.Prototype.ActiveLight} to set the mode directly.
+     */
     ToggleLightMode() {
         if this.__ActiveTheme.Name = this.LightModeName {
             this.ActivateLight(0)
@@ -1961,6 +2265,15 @@ class XttThemeGroup extends Xtooltip.Base {
             this.ActivateLight(1)
         }
     }
+    /**
+     * @desc - Adds an {@link Xtooltip} object to the collection {@link XttThemeGroup#Xtooltips}.
+     *
+     * @param {Xtooltip} Xtt - The {@link Xtooltip} object.
+     *
+     * @param {Boolean} [ApplyActiveTheme = true] - If true, applies the active theme
+     * ({@link XttThemeGroup#ActiveTheme}) to the {@link Xtooltip} object. If false, this
+     * does not occur.
+     */
     XttAdd(Xtt, ApplyActiveTheme := true) {
         this.Xtooltips.Set(Xtt.Hwnd, Xtt)
         Xtt.ThemeGroupName := this.__Name
@@ -1968,6 +2281,11 @@ class XttThemeGroup extends Xtooltip.Base {
             this.__ActiveTheme.Apply(Xtt)
         }
     }
+    /**
+     * @desc - Deletes an {@link Xtooltip} object from the collection {@link XttThemeGroup#Xtooltips}.
+     *
+     * @param {Xtooltip} Xtt - The {@link Xtooltip} object.
+     */
     XttDelete(Xtt) {
         this.Xtooltips.Delete(Xtt.Hwnd)
         Xtt.ThemeGroupName := ''
@@ -1980,6 +2298,517 @@ class XttThemeGroup extends Xtooltip.Base {
     Name {
         Get => this.__Name
         Set => this.SetName(Value)
+    }
+}
+
+class XttPool extends Array {
+    static __New() {
+        this.DeleteProp('__New')
+        this.collection := Map()
+        this.collection.Default := ''
+        proto := this.Prototype
+        proto.ThemeGroup := ''
+    }
+    /**
+     * @desc - When using `XttPool`, displaying a tooltip at a specific location
+     * requires only one line of code (after creating the object).
+     *
+     * Here is how you create an `XttPool` object:
+     *
+     * @example
+     * #include <Xtooltip>
+     *
+     * ; Create a theme
+     * theme := XttTheme("MyTheme", {
+     *       BackColor: XttRgb(255, 255, 255)
+     *     , FaceName: 'Segoe Ui'
+     *     , FontSize: 12
+     *     , Quality: 5
+     *     , Margin: XttRect.Margin(3)
+     *     , MaxWidth: 400
+     *     , TextColor: XttRgb(255, 0, 235)
+     *     , Weight: 400})
+     *
+     * ; Create a theme group and activate the theme
+     * themeGroup := XttThemeGroup("MyGroup", theme)
+     * themeGroup.ThemeActivate("MyTheme")
+     *
+     * ; Create the `XttPool` object. The constructor requires an `XttThemeGroup` object
+     * pool := XttPool(themeGroup)
+     * @
+     *
+     * Once the object is created, your code simply calls any of its three methods to display a tooltip.
+     *
+     * You can call the methods multiple times to display any number of tooltip windows at the same
+     * time. They will all be using the same theme.
+     *
+     * @example
+     * ; Show a tooltip at 100, 100 indefinitely
+     * ttItem := pool("Hello, world!", 100, 100)
+     *
+     * ; When the tooltip is no longer needed, just call the object
+     * ttItem() ; this hides the tooltip window
+     * @
+     *
+     * @example
+     * ; Show a tooltip at 100, 100 for 2 seconds
+     * pool("Hello, world!", 100, 100, 2000)
+     * @
+     *
+     * @example
+     * ; Show a tooltip next to the mouse pointer for 3 seconds
+     * pool.ShowByMouse("Hello, world!", 3000)
+     * @
+     *
+     * @example
+     * ; Show a tooltip next to the currently active window for 3 seconds
+     * pool.ShowByRect("Hello, world!", WinGetId("A"), 3000)
+     * @
+     *
+     * `XttPool` inherits from `Array`, and itself is a collection of `XttPool.Item` objects. When
+     * your code calls one of `XttPool`'s methods, it checks if it has any `XttPool.Item` objects available,
+     * and, if it does, it uses one to display the intended message at the intended location. If it does not,
+     * it simply creates a new `XttPool.Item` object and uses that.
+     *
+     * This allows you to display any number of tooltip windows at the same time, without the hassle of
+     * setting up each tracking tooltip individually.
+     *
+     * There is a demo script "test\test-XttPool.ahk" that allows you to try out two methods:
+     *
+     * - `XttPool.Prototype.ShowByMouse` - Displays a tooltip window by the mouse pointer.
+     * - `XttPool.Prototype.ShowByRect` - Displays a tooltip window adjacent to a window or rectangle.
+     *
+     * The methods have a parameter `Duration`. If your code sets `Duration`, then the tooltip window
+     * will be hidden after `Duration` elapses, and the `XttPool.Item` will automatically be added
+     * back to the collection to be used again in the future. If your code does not set the `Duration`
+     * parameter, then the tooltip window will be displayed indefinitely. The `XttPool` methods
+     * return the `XttPool.Item` object; when your application is done with the tooltip window, you just
+     * call the object and the tooltip window is hidden and the item is added back to the collection.
+     *
+     * @param {XttThemeGroup} ThemeGroup - The {@link XttThemeGroup} object that will be used by
+     * all of the {@link Xtooltip} objects.
+     *
+     * @param {String} [Key = "pool"] - The "Key" used when creating the tracking tooltips using
+     * {@link Xtooltip.Prototype.AddTracking}.
+     */
+    __New(ThemeGroup, Key := 'pool') {
+        loop 10000 {
+            id := Random(1, 4294967295)
+            if !XttPool.collection.Has(id) {
+                this.id := id
+                XttPool.collection.Set(id, this)
+                ObjRelease(ObjPtr(this))
+                break
+            }
+        }
+        if !this.HasOwnProp('id') {
+            throw Error('Failed to produce a unique id.')
+        }
+        this.ThemeGroup := ThemeGroup
+        this.Key := Key
+        this.Capacity := Max(ThemeGroup.Xtooltips.Count, 16)
+        proto := this.__prototype := { idXttPool: this.id, key: Key }
+        proto.base := XttPool.Item.Prototype
+        for name, xtt in ThemeGroup.Xtooltips {
+            item := { xtt: xtt }
+            item.base := proto
+            this.Push(item)
+            if !xtt.HasTrackingTool {
+                xtt.AddTracking(Key, '')
+            }
+        }
+    }
+    /**
+     * @desc - Displays a tooltip at the specified location.
+     *
+     * @param {String} Text - The text to display in the tooltip.
+     *
+     * @param {Integer} X - The x-coordinate.
+     *
+     * @param {Integer} Y - The y-coordinate.
+     *
+     * @param {Integer} [Duration = 0] - If zero, the tooltip window is displayed indefinitely
+     * To close the window, you must cache the reference to the {@link XttPool.Item} object returned
+     * by thie method, then when finished with the tooltip window, just call the object.
+     *
+     * If nonzero, the tooltip window will be hidden after `Duration` milliseconds passes.
+     *
+     * @example
+     * #include <Xtooltip>
+     *
+     * ; Create a theme
+     * theme := XttTheme("MyTheme", {
+     *       BackColor: XttRgb(255, 255, 255)
+     *     , FaceName: 'Segoe Ui'
+     *     , FontSize: 12
+     *     , Quality: 5
+     *     , Margin: XttRect.Margin(3)
+     *     , MaxWidth: 400
+     *     , TextColor: XttRgb(255, 0, 235)
+     *     , Weight: 400})
+     *
+     * ; Create a theme group and activate the theme
+     * themeGroup := XttThemeGroup("MyGroup", theme)
+     * themeGroup.ThemeActivate("MyTheme")
+     *
+     * ; Create the `XttPool` object. The constructor requires an `XttThemeGroup` object
+     * pool := XttPool(themeGroup)
+     *
+     * ttItem := pool("Hello, world!", 100, 100)
+     *
+     * ; When finished
+     * ttItem() ; this closes the window.
+     * @
+     *
+     * @param {Integer} [Priority = 0] - The value to pass to the `Priority` parameter of
+     * {@link https://www.autohotkey.com/docs/v2/lib/SetTimer.htm SetTimer}.
+     *
+     * If `Duration` is `0`, `Priority` is ignored.
+     *
+     * @returns {XttPool.Item}
+     */
+    Call(Text, X, Y, Duration := 0, Priority := 0) {
+        if this.Length {
+            item := this.Pop()
+            item.xtt.UpdateTipText(Text, this.Key)
+        } else {
+            item := { xtt: Xtooltip({ ThemeGroup: this.ThemeGroup }) }
+            item.base := this.__prototype
+            item.xtt.AddTracking(this.Key, Text)
+        }
+        ti := item.xtt.Tools.Get(this.Key).Call()
+        SendMessage(TTM_TRACKACTIVATE, 1, ti.Ptr, item.xtt.Hwnd)
+        SendMessage(TTM_TRACKPOSITION, 0, (Y << 16) | (X & 0xFFFF), item.xtt.Hwnd)
+        if Duration {
+            SetTimer(item, -Abs(Duration), Priority)
+        }
+        return item
+    }
+    /**
+     * @desc - Displays a tooltip next to the mouse pointer.
+     *
+     * @param {String} Text - The text to display in the tooltip.
+     *
+     * @param {Integer} [Duration = 0] - If zero, the tooltip window is displayed indefinitely
+     * To close the window, you must cache the reference to the {@link XttPool.Item} object returned
+     * by thie method, then when finished with the tooltip window, just call the object.
+     *
+     * If nonzero, the tooltip window will be hidden after `Duration` milliseconds passes.
+     *
+     * @example
+     * #include <Xtooltip>
+     *
+     * ; Create a theme
+     * theme := XttTheme("MyTheme", {
+     *       BackColor: XttRgb(255, 255, 255)
+     *     , FaceName: 'Segoe Ui'
+     *     , FontSize: 12
+     *     , Quality: 5
+     *     , Margin: XttRect.Margin(3)
+     *     , MaxWidth: 400
+     *     , TextColor: XttRgb(255, 0, 235)
+     *     , Weight: 400})
+     *
+     * ; Create a theme group and activate the theme
+     * themeGroup := XttThemeGroup("MyGroup", theme)
+     * themeGroup.ThemeActivate("MyTheme")
+     *
+     * ; Create the `XttPool` object. The constructor requires an `XttThemeGroup` object
+     * pool := XttPool(themeGroup)
+     *
+     * ttItem := pool("Hello, world!", 100, 100)
+     *
+     * ; When finished
+     * ttItem() ; this closes the window.
+     * @
+     *
+     * @param {String} [Dimension = "X"] - Either "X" or "Y", specifying if the tooltip window is to
+     * be moved adjacent to the cursor on either the X or Y axis. If "X", the tooltip window is moved
+     * to the left or right of the cursor, and the window's vertical center is aligned with the
+     * cursor's vertical center. If "Y", the tooltip window is moved to the top or bottom of the
+     * cursor, and the tooltip window's horizontal center is aligned with the cursor's horizontal center.
+     *
+     * @param {String} [Prefer = ""] - A character indicating a preferred side. If `Prefer` is an
+     * empty string, the function will move the tooltip window to the side the has the greatest amount of
+     * space between the monitor's border and the cursor. If `Prefer` is any of the following values,
+     * the tooltip window will be moved to that side unless doing so would cause the the tooltip window
+     * to extend outside of the monitor's work area.
+     * - "L" - Prefers the left side.
+     * - "T" - Prefers the top side.
+     * - "R" - Prefers the right side.
+     * - "B" - Prefes the bottom.
+     *
+     * @param {Number} [Padding = 0] - The amount of padding to leave between the tooltip window
+     * and the cursor.
+     *
+     * @param {Integer} [Priority = 0] - The value to pass to the `Priority` parameter of
+     * {@link https://www.autohotkey.com/docs/v2/lib/SetTimer.htm SetTimer}.
+     *
+     * If `Duration` is `0`, `Priority` is ignored.
+     *
+     * @param {VarRef} [OutResult] - A variable that receives the value returned by
+     * {@link XttRectMoveAdjacent}.
+     *
+     * @returns {XttPool.Item}
+     */
+    ShowByMouse(Text, Duration := 0, Dimension := 'X', Prefer := '', Padding := 0, Priority := 0, &OutResult?) {
+        if this.Length {
+            item := this.Pop()
+            item.xtt.UpdateTipText(Text, this.Key)
+        } else {
+            item := { xtt: Xtooltip({ ThemeGroup: this.ThemeGroup }) }
+            item.base := this.__prototype
+            item.xtt.AddTracking(this.Key, Text)
+        }
+        ti := item.xtt.Tools.Get(this.Key).Call()
+        SendMessage(TTM_TRACKACTIVATE, 1, ti.Ptr, item.xtt.Hwnd)
+        rc := XttRect.Window(item.xtt.Hwnd)
+        OutResult := XttRectMoveAdjacent(rc, , , Dimension, Prefer, Padding, 2)
+        SendMessage(TTM_TRACKPOSITION, 0, (rc.T << 16) | (rc.L & 0xFFFF), item.xtt.Hwnd)
+        if Duration {
+            SetTimer(item, -Abs(Duration), Priority)
+        }
+        return item
+    }
+    /**
+     * @description - Calculates the optimal position to move the tooltip window adjacent to another
+     * window / rectangle while ensuring that the tooltip window stays within the monitor's work area.
+     * If successful, moves the tracking tooltip window to the new position.
+     *
+     * @param {String} Text - The text to display in the tooltip.
+     *
+     * @param {Integer|XttRect} [Target] - One of the following:
+     *
+     * - If an integer, it is a window's handle (hwnd). The tooltip window will be moved adjacent to
+     *   that window.
+     * - If an {@link XttRect} object, the tooltip window will be moved adjacent to the rectangle.
+     *
+     * @param {Integer} [Duration = 0] - If zero, the tooltip window is displayed indefinitely
+     * To close the window, you must cache the reference to the {@link XttPool.Item} object returned
+     * by thie method, then when finished with the tooltip window, just call the object.
+     *
+     * If nonzero, the tooltip window will be hidden after `Duration` milliseconds passes.
+     *
+     * @example
+     * #include <Xtooltip>
+     *
+     * ; Create a theme
+     * theme := XttTheme("MyTheme", {
+     *       BackColor: XttRgb(255, 255, 255)
+     *     , FaceName: 'Segoe Ui'
+     *     , FontSize: 12
+     *     , Quality: 5
+     *     , Margin: XttRect.Margin(3)
+     *     , MaxWidth: 400
+     *     , TextColor: XttRgb(255, 0, 235)
+     *     , Weight: 400})
+     *
+     * ; Create a theme group and activate the theme
+     * themeGroup := XttThemeGroup("MyGroup", theme)
+     * themeGroup.ThemeActivate("MyTheme")
+     *
+     * ; Create the `XttPool` object. The constructor requires an `XttThemeGroup` object
+     * pool := XttPool(themeGroup)
+     *
+     * ttItem := pool("Hello, world!", 100, 100)
+     *
+     * ; When finished
+     * ttItem() ; this closes the window.
+     * @
+     *
+     * @param {*} [ContainerRect] - If set, `ContainerRect` defines the boundaries which restrict
+     * the area that the tooltip window is permitted to be moved within. The object must have poperties
+     * { L, T, R, B } to be valid. If unset, the work area of the monitor with the greatest area of
+     * intersection with `Target` is used.
+     *
+     * @param {String} [Dimension = "X"] - Either "X" or "Y", specifying if the tooltip window is to
+     * be moved adjacent to `Target` on either the X or Y axis. If "X", the tooltip window is moved
+     * to the left or right of `Target`, and the tooltip window's vertical center is aligned with
+     * `Target`'s vertical center. If "Y", the tooltip window is moved to the top or bottom of
+     * `Target`, and the tooltip window's horizontal center is aligned with `Target`'s horizontal center.
+     *
+     * @param {String} [Prefer = ""] - A character indicating a preferred side. If `Prefer` is an
+     * empty string, the function will move the rectangle to the side the has the greatest amount of
+     * space between the monitor's border and `Target`. If `Prefer` is any of the following values,
+     * the rectangle will be moved to that side unless doing so would cause the the rectangle to extend
+     * outside of the monitor's work area.
+     * - "L" - Prefers the left side.
+     * - "T" - Prefers the top side.
+     * - "R" - Prefers the right side.
+     * - "B" - Prefes the bottom.
+     *
+     * @param {Number} [Padding = 0] - The amount of padding to leave between the tooltip window and `Target`.
+     *
+     * @param {Integer} [InsufficientSpaceAction = 2] - Determines the action taken if there is
+     * insufficient space to move the rectangle adjacent to `Target` while also keeping the rectangle
+     * entirely within the monitor's work area. The function will always sacrifice some of the padding
+     * if it will allow the rectangle to stay within the monitor's work area. If the space is still
+     * insufficient, the action can be one of the following:
+     * - 0 : The function will not move the rectangle.
+     * - 1 : The function will move the rectangle, allowing the rectangle's area to extend into a
+     *   non-visible region of the monitor.
+     * - 2 : The function will move the rectangle, keeping the rectangle's area within the monitor's work
+     *   area by allowing the rectangle to overlap with `Target`.
+     *
+     * @returns {Integer} - If the insufficient space action was invoked, returns 1. Else, returns 0.
+     *
+     * @param {Integer} [Priority = 0] - The value to pass to the `Priority` parameter of
+     * {@link https://www.autohotkey.com/docs/v2/lib/SetTimer.htm SetTimer}.
+     *
+     * If `Duration` is `0`, `Priority` is ignored.
+     *
+     * @param {VarRef} [OutResult] - A variable that receives the value returned by
+     * {@link XttRectMoveAdjacent}.
+     *
+     * @returns {XttPool.Item}
+     */
+    ShowByRect(Text, Target, Duration?, ContainerRect?, Dimension := 'X', Prefer := '', Padding := 0, InsufficientSpaceAction := 0, Priority := 0, &OutResult?) {
+        if this.Length {
+            item := this.Pop()
+            item.xtt.UpdateTipText(Text, this.Key)
+        } else {
+            item := { xtt: Xtooltip({ ThemeGroup: this.ThemeGroup }) }
+            item.base := this.__prototype
+            item.xtt.AddTracking(this.Key, Text)
+        }
+        if !IsObject(Target) {
+            Target := XttRect.Window(Target)
+        }
+        ti := item.xtt.Tools.Get(this.Key).Call()
+        SendMessage(TTM_TRACKACTIVATE, 1, ti.Ptr, item.xtt.Hwnd)
+        rc := XttRect.Window(item.xtt.Hwnd)
+        if !(OutResult := XttRectMoveAdjacent(rc, Target, ContainerRect?, Dimension, Prefer, Padding, InsufficientSpaceAction)) || InsufficientSpaceAction {
+            SendMessage(TTM_TRACKPOSITION, 0, (rc.T << 16) | (rc.L & 0xFFFF), item.xtt.Hwnd)
+            if IsSet(Duration) {
+                SetTimer(item, -Abs(Duration), Priority)
+            }
+        }
+        return item
+    }
+    __Delete() {
+        ObjPtrAddRef(this)
+        if XttPool.collection.Has(this.id) {
+            XttPool.collection.Delete(this.id)
+        }
+    }
+
+    class Item {
+        static __New() {
+            this.DeleteProp('__New')
+            this.Prototype.idXttPool := this.Prototype.key := ''
+        }
+        __New(xtt) {
+            /**
+             * @memberof XttPool.Item
+             * @instance
+             * @type {Xtooltip}
+             */
+            this.xtt := xtt
+        }
+        /**
+         * @desc - Hides the tooltip window and returns the {@link XttPool.Item} object back to
+         * the {@link XttPool} object's internal collection.
+         */
+        Call() {
+            if pool := XttPool.collection.Get(this.idXttPool) {
+                pool.Push(this)
+                this.xtt.TrackActivate(this.key, 0)
+            }
+        }
+        /**
+         * @desc - Moves the tracking tooltip window.
+         *
+         * @param {Integer} X - The x-coordinate.
+         *
+         * @param {Integer} Y - The y-coordinate.
+         */
+        Move(X, Y) {
+            SendMessage(TTM_TRACKPOSITION, 0, (Y << 16) | (X & 0xFFFF), this.xtt.Hwnd)
+        }
+        /**
+         * @desc - Calls {@link Xtooltip.Prototype.TrackMoveByMouse}, moving the tracking
+         * tooltip window near the cursor.
+         *
+         * @param {String} [Dimension = "X"] - Either "X" or "Y", specifying if the tooltip window is to
+         * be moved adjacent to the cursor on either the X or Y axis. If "X", the tooltip window is moved
+         * to the left or right of the cursor, and the window's vertical center is aligned with the
+         * cursor's vertical center. If "Y", the tooltip window is moved to the top or bottom of the
+         * cursor, and the tooltip window's horizontal center is aligned with the cursor's horizontal center.
+         *
+         * @param {String} [Prefer = ""] - A character indicating a preferred side. If `Prefer` is an
+         * empty string, the function will move the tooltip window to the side the has the greatest amount of
+         * space between the monitor's border and the cursor. If `Prefer` is any of the following values,
+         * the tooltip window will be moved to that side unless doing so would cause the the tooltip window
+         * to extend outside of the monitor's work area.
+         * - "L" - Prefers the left side.
+         * - "T" - Prefers the top side.
+         * - "R" - Prefers the right side.
+         * - "B" - Prefes the bottom.
+         *
+         * @param {Number} [Padding = 0] - The amount of padding to leave between the tooltip window
+         * and the cursor.
+         */
+        MoveByMouse(Dimension := 'X', Prefer := '', Padding := 0) {
+            this.xtt.TrackMoveByMouse(Dimension, Prefer, Padding)
+        }
+        /**
+         * @description - Calls {@link Xtooltip.Prototype.TrackMoveByRect}.
+         *
+         * Calculates the optimal position to move the tooltip window adjacent to another
+         * window / rectangle while ensuring that the tooltip window stays within the monitor's work area.
+         * If successful, moves the tracking tooltip window to the new position.
+         *
+         * @param {Integer|XttRect} [Target] - One of the following:
+         *
+         * - If an integer, it is a window's handle (hwnd). The tooltip window will be moved adjacent to
+         *   that window.
+         * - If an {@link XttRect} object, the tooltip window will be moved adjacent to the rectangle.
+         *
+         * @param {*} [ContainerRect] - If set, `ContainerRect` defines the boundaries which restrict
+         * the area that the tooltip window is permitted to be moved within. The object must have poperties
+         * { L, T, R, B } to be valid. If unset, the work area of the monitor with the greatest area of
+         * intersection with `Target` is used.
+         *
+         * @param {String} [Dimension = "X"] - Either "X" or "Y", specifying if the tooltip window is to
+         * be moved adjacent to `Target` on either the X or Y axis. If "X", the tooltip window is moved
+         * to the left or right of `Target`, and the tooltip window's vertical center is aligned with
+         * `Target`'s vertical center. If "Y", the tooltip window is moved to the top or bottom of
+         * `Target`, and the tooltip window's horizontal center is aligned with `Target`'s horizontal center.
+         *
+         * @param {String} [Prefer = ""] - A character indicating a preferred side. If `Prefer` is an
+         * empty string, the function will move the rectangle to the side the has the greatest amount of
+         * space between the monitor's border and `Target`. If `Prefer` is any of the following values,
+         * the rectangle will be moved to that side unless doing so would cause the the rectangle to extend
+         * outside of the monitor's work area.
+         * - "L" - Prefers the left side.
+         * - "T" - Prefers the top side.
+         * - "R" - Prefers the right side.
+         * - "B" - Prefes the bottom.
+         *
+         * @param {Number} [Padding = 0] - The amount of padding to leave between the tooltip window and `Target`.
+         *
+         * @param {Integer} [InsufficientSpaceAction = 2] - Determines the action taken if there is
+         * insufficient space to move the rectangle adjacent to `Target` while also keeping the rectangle
+         * entirely within the monitor's work area. The function will always sacrifice some of the padding
+         * if it will allow the rectangle to stay within the monitor's work area. If the space is still
+         * insufficient, the action can be one of the following:
+         * - 0 : The function will not move the rectangle.
+         * - 1 : The function will move the rectangle, allowing the rectangle's area to extend into a
+         *   non-visible region of the monitor.
+         * - 2 : The function will move the rectangle, keeping the rectangle's area within the monitor's work
+         *   area by allowing the rectangle to overlap with `Target`.
+         *
+         * @returns {Integer} - If the insufficient space action was invoked, returns 1. Else, returns 0.
+         */
+        MoveByRect(Target, ContainerRect?, Dimension := 'X', Prefer := '', Padding := 0, InsufficientSpaceAction := 2) {
+            return this.xtt.TrackMoveByRect(Target, ContainerRect?, Dimension, Prefer, Padding, InsufficientSpaceAction)
+        }
+        /**
+         * @desc - Sets the tooltip's text.
+         */
+        SetText(Text) {
+            this.xtt.UpdateTipText(Text, this.key)
+        }
     }
 }
 
@@ -2346,6 +3175,11 @@ class XttRect {
         rc := this(margin, margin, margin, margin)
         return rc
     }
+    static FromPtr(ptr) {
+        rc := { ptr: ptr, size: 16 }
+        rc.base := this.Prototype
+        return rc
+    }
 
     __New(L?, T?, R?, B?) {
         this.Buffer := Buffer(16)
@@ -2517,6 +3351,12 @@ class XttErrors {
     }
     static ThrowTrackingError() {
         throw Error('Only one tracking tool can be added to an Xtooltip at a time.')
+    }
+    ; If you get this error it most likely means that your code called the
+    ; `XttPool.Item.Prototype.Return` method after the `XttPool` object was deleted. This would
+    ; occur if all references to the `XttPool` object go out of scope or get unset.
+    static ThrowMissingObjectError(idXttPool) {
+        throw Error('The ``XttPool`` object was deleted from the collection.', , 'id: ' idXttPool)
     }
 }
 
@@ -3050,5 +3890,206 @@ XttSetThreadDpiAwareness__Call(Obj, Name, Params) {
         }
     } else {
         throw PropertyError('Property not found.', , Name)
+    }
+}
+/**
+ * @description - Calculates the optimal position to move one rectangle adjacent to another while
+ * ensuring that the `Subject` rectangle stays within the monitor's work area. The properties
+ * { L, T, R, B } of `Subject` are updated with the new values.
+ *
+ * @param {*} Subject - The object representing the rectangle that will be moved. This can be an
+ * instance of `Rect` or any class that inherits from `Rect`, or any object with properties
+ * { L, T, R, B }. Those four property values will be updated with the result of this function call.
+ *
+ * @param {*} [Target] - The object representing the rectangle that will be used as reference. This
+ * can be an instance of `Rect` or any class that inherits from `Rect`, or any object with properties
+ * { L, T, R, B }. If unset, the mouse's current position relative to the screen is used. To use
+ * a point instead of a rectangle, set the properties "L" and "R" equivalent to one another, and
+ * "T" and "B" equivalent to one another.
+ *
+ * @param {*} [ContainerRect] - If set, `ContainerRect` defines the boundaries which restrict
+ * the area that the rectangle is permitted to be moved within. The object must have poperties
+ * { L, T, R, B } to be valid. If unset, the work area of the monitor with the greatest area of
+ * intersection with `Target` is used.
+ *
+ * @param {String} [Dimension = "X"] - Either "X" or "Y", specifying if the rectangle is to be moved
+ * adjacent to `Target` on either the X or Y axis. If "X", `Subject` is moved to the left or right
+ * of `Target`, and `Subject`'s vertical center is aligned with `Target`'s vertical center. If "Y",
+ * `Subject` is moved to the top or bottom of `Target`, and `Subject`'s horizontal center is aligned
+ * with `Target`'s horizontal center.
+ *
+ * @param {String} [Prefer = ""] - A character indicating a preferred side. If `Prefer` is an
+ * empty string, the function will move the rectangle to the side the has the greatest amount of
+ * space between the monitor's border and `Target`. If `Prefer` is any of the following values,
+ * the rectangle will be moved to that side unless doing so would cause the the rectangle to extend
+ * outside of the monitor's work area.
+ * - "L" - Prefers the left side.
+ * - "T" - Prefers the top side.
+ * - "R" - Prefers the right side.
+ * - "B" - Prefes the bottom.
+ *
+ * @param {Number} [Padding = 0] - The amount of padding to leave between `Subject` and `Target`.
+ *
+ * @param {Integer} [InsufficientSpaceAction = 0] - Determines the action taken if there is
+ * insufficient space to move the rectangle adjacent to `Target` while also keeping the rectangle
+ * entirely within the monitor's work area. The function will always sacrifice some of the padding
+ * if it will allow the rectangle to stay within the monitor's work area. If the space is still
+ * insufficient, the action can be one of the following:
+ * - 0 : The function will not move the rectangle.
+ * - 1 : The function will move the rectangle, allowing the rectangle's area to extend into a non-visible
+ *   region of the monitor.
+ * - 2 : The function will move the rectangle, keeping the rectangle's area within the monitor's work
+ *   area by allowing the rectangle to overlap with `Target`.
+ *
+ * @returns {Integer} - If the insufficient space action was invoked, returns 1. Else, returns 0.
+ */
+XttRectMoveAdjacent(Subject, Target?, ContainerRect?, Dimension := 'X', Prefer := '', Padding := 0, InsufficientSpaceAction := 0) {
+    Result := 0
+    if IsSet(Target) {
+        tarL := Target.L
+        tarT := Target.T
+        tarR := Target.R
+        tarB := Target.B
+    } else {
+        mode := CoordMode('Mouse', 'Screen')
+        MouseGetPos(&tarL, &tarT)
+        tarR := tarL
+        tarB := tarT
+        CoordMode('Mouse', mode)
+    }
+    tarW := tarR - tarL
+    tarH := tarB - tarT
+    if IsSet(ContainerRect) {
+        monL := ContainerRect.L
+        monT := ContainerRect.T
+        monR := ContainerRect.R
+        monB := ContainerRect.B
+        monW := monR - monL
+        monH := monB - monT
+    } else {
+        buf := Buffer(16)
+        NumPut('int', tarL, 'int', tarT, 'int', tarR, 'int', tarB, buf)
+        Hmon := DllCall('MonitorFromRect', 'ptr', buf, 'uint', 0x00000002, 'ptr')
+        mon := Buffer(40)
+        NumPut('int', 40, mon)
+        if !DllCall('GetMonitorInfo', 'ptr', Hmon, 'ptr', mon, 'int') {
+            throw OSError()
+        }
+        monL := NumGet(mon, 20, 'int')
+        monT := NumGet(mon, 24, 'int')
+        monR := NumGet(mon, 28, 'int')
+        monB := NumGet(mon, 32, 'int')
+        monW := monR - monL
+        monH := monB - monT
+    }
+    subL := Subject.L
+    subT := Subject.T
+    subR := Subject.R
+    subB := Subject.B
+    subW := subR - subL
+    subH := subB - subT
+    if Dimension = 'X' {
+        if Prefer = 'L' {
+            if tarL - subW - Padding >= monL {
+                X := tarL - subW - Padding
+            } else if tarL - subW >= monL {
+                X := monL
+            }
+        } else if Prefer = 'R' {
+            if tarR + subW + Padding <= monR {
+                X := tarR + Padding
+            } else if tarR + subW <= monR {
+                X := monR - subW
+            }
+        } else if Prefer {
+            throw _ValueError('Prefer', Prefer)
+        }
+        if !IsSet(X) {
+            flag_nomove := false
+            X := _Proc(subW, tarL, tarR, monL, monR)
+            if flag_nomove {
+                return Result
+            }
+        }
+        Y := tarT + tarH / 2 - subH / 2
+        if Y + subH > monB {
+            Y := monB - subH
+        } else if Y < monT {
+            Y := monT
+        }
+    } else if Dimension = 'Y' {
+        if Prefer = 'T' {
+            if tarT - subH - Padding >= monT {
+                Y := tarT - subH - Padding
+            } else if tarT - subH >= monT {
+                Y := monT
+            }
+        } else if Prefer = 'B' {
+            if tarB + subH + Padding <= monB {
+                Y := tarB + Padding
+            } else if tarB + subH <= monB {
+                Y := monB - subH
+            }
+        } else if Prefer {
+            throw _ValueError('Prefer', Prefer)
+        }
+        if !IsSet(Y) {
+            flag_nomove := false
+            Y := _Proc(subH, tarT, tarB, monT, monB)
+            if flag_nomove {
+                return Result
+            }
+        }
+        X := tarL + tarW / 2 - subW / 2
+        if X + subW > monR {
+            X := monR - subW
+        } else if X < monL {
+            X := monL
+        }
+    } else {
+        throw _ValueError('Dimension', Dimension)
+    }
+    Subject.L := X
+    Subject.T := Y
+    Subject.R := X + subW
+    Subject.B := Y + subH
+
+    return Result
+
+    _Proc(SubLen, TarMainSide, TarAltSide, MonMainSide, MonAltSide) {
+        if TarMainSide - MonMainSide > MonAltSide - TarAltSide {
+            if TarMainSide - SubLen - Padding >= MonMainSide {
+                return TarMainSide - SubLen - Padding
+            } else if TarMainSide - SubLen >= MonMainSide {
+                return MonMainSide + TarMainSide - SubLen
+            } else {
+                Result := 1
+                switch InsufficientSpaceAction, 0 {
+                    case 0: flag_nomove := true
+                    case 1: return TarMainSide - SubLen
+                    case 2: return MonMainSide
+                    default: throw _ValueError('InsufficientSpaceAction', InsufficientSpaceAction)
+                }
+            }
+        } else if TarAltSide + SubLen + Padding <= MonAltSide {
+            return TarAltSide + Padding
+        } else if TarAltSide + SubLen <= MonAltSide {
+            return MonAltSide - TarAltSide + SubLen
+        } else {
+            Result := 1
+            switch InsufficientSpaceAction, 0 {
+                case 0: flag_nomove := true
+                case 1: return TarAltSide
+                case 2: return MonAltSide - SubLen
+                default: throw _ValueError('InsufficientSpaceAction', InsufficientSpaceAction)
+            }
+        }
+    }
+    _ValueError(name, Value) {
+        if IsObject(Value) {
+            return TypeError('Invalid type passed to ``' name '``.')
+        } else {
+            return ValueError('Unexpected value passed to ``' name '``.', , Value)
+        }
     }
 }
