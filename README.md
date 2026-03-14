@@ -726,6 +726,8 @@ properties instead of the class properties.
   - Change:
     - `XttPool.Prototype.Call`, `XttPool.Prototype.ShowByMouse`, and `XttPool.Prototype.ShowByRect` to apply
       the `XttThemeGroup`'s active theme to the tooltip before displaying the tooltip.
+    - `Xtooltip_SetConstants` to set global variables for each dll procedure call.
+    - All `DllCall` calls to use the procedure address cached in a global variable.
 
 - **2026-03-13**: v1.1.0
   - Fix:
