@@ -619,13 +619,17 @@ class Xtooltip extends Xtooltip.Base {
     Dispose() {
         hwnd := this.Hwnd
         if _name := this.__Name || hwnd {
-            if themeGroup := this.ThemeGroup {
-                if themeGroup.Has(_name) {
-                    themeGroup.Delete(_name)
+            if this.HasOwnProp('ThemeGroup') {
+                if themeGroup := this.ThemeGroup {
+                    if themeGroup.Has(_name) {
+                        themeGroup.Delete(_name)
+                    }
                 }
             }
-            if this.XttCollection && this.XttCollection.Has(_name) {
-                this.XttCollection.Delete(_name)
+            if this.HasOwnProp('XttCollection') {
+                if this.XttCollection && this.XttCollection.Has(_name) {
+                    this.XttCollection.Delete(_name)
+                }
             }
             if this.HasOwnProp('__Name') {
                 this.DeleteProp('__Name')
