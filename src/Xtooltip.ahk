@@ -170,7 +170,7 @@ class Xtooltip extends Xtooltip.Base {
      * about the maximum width.
      * @param {Integer} [Options.Menu = 0] - The value to pass to the `hMenu` parameter of `CreateWindowExW`.
      * Leave this 0.
-     * @param {String} [Options.Name] - A name to associate with the `Xtooltip` object. See [Collections](#collections).
+     * @param {String} [Options.Name] - A name to associate with the `Xtooltip` object..
      * @param {Integer} [Options.Param = 0] - The value to pass to the `lParam` parameter of `CreateWindowExW`.
      * Leave this 0.
      * @param {Integer} [Options.Quality = 5] - The font quality.
@@ -178,7 +178,7 @@ class Xtooltip extends Xtooltip.Base {
      * @param {Integer} [Options.Style = WS_BORDER | WS_POPUP | TTS_NOPREFIX] - The window style flags.
      * @param {Integer} [Options.TextColor] - The COLORREF representing the text color. Use `XttRgb(r, g, b)` to
      * convert RGB to COLORREF.
-     * @param {XttTheme} [Options.Theme] - The `XttTheme` object to apply to the tooltip. See [Themes](#themes).
+     * @param {XttTheme} [Options.Theme] - The `XttTheme` object to apply to the tooltip..
      * @param {XttThemeGroup} [Options.ThemeGroup] - The `XttThemeGroup` object to which to add the `Xtooltip` object.
      * See {@link XttThemeGroup}.
      * @param {String} [Options.Title] - The title to display in the tooltip window.
