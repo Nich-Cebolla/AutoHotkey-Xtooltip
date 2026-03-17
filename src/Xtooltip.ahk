@@ -178,7 +178,7 @@ class Xtooltip extends Xtooltip.Base {
      * @param {Integer} [Options.Style = WS_BORDER | WS_POPUP | TTS_NOPREFIX] - The window style flags.
      * @param {Integer} [Options.TextColor] - The COLORREF representing the text color. Use `XttRgb(r, g, b)` to
      * convert RGB to COLORREF.
-     * @param {XttTheme} [Options.Theme] - The `XttTheme` object to apply to the tooltip..
+     * @param {XttTheme} [Options.Theme] - The `XttTheme` object to apply to the tooltip.
      * @param {XttThemeGroup} [Options.ThemeGroup] - The `XttThemeGroup` object to which to add the `Xtooltip` object.
      * See {@link XttThemeGroup}.
      * @param {String} [Options.Title] - The title to display in the tooltip window.
